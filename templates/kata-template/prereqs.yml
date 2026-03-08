@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-XXX — Your Kata Title
+  Prerequisites template. Deploy this stack BEFORE starting the kata.
+  This template provisions infrastructure that must exist before the user
+  begins building the kata requirements.
+
+# =============================================================================
+# OPTIONAL FILE
+# =============================================================================
+# Only include prereqs.yml if your kata requires infrastructure to exist
+# before the user starts. If no prerequisites are needed, delete this file.
+#
+# If you include this file, LAB.md must clearly instruct the user to deploy
+# this stack before starting the kata requirements.
+# =============================================================================
+
+# =============================================================================
+# Parameters
+# =============================================================================
+Parameters:
+  KataId:
+    Type: String
+    Default: kata-XXX
+    Description: Kata identifier used for resource naming and tagging
+    AllowedValues:
+      - kata-XXX
+
+# =============================================================================
+# Resources
+# =============================================================================
+# Prerequisite resources follow the same kata-XXX-ResourceName naming
+# convention and must include the Project and Kata tags.
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Prerequisite Resource 1 — [Resource description]
+  # ---------------------------------------------------------------------------
+  ExamplePrereqResource:
+    Type: AWS::Some::ResourceType
+    Properties:
+      Name: kata-XXX-PrereqResourceName
+      # Add your prerequisite resource properties here
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-XXX
+
+# =============================================================================
+# Outputs
+# =============================================================================
+# Export key values that the user will need to reference during the kata.
+# Use clear, descriptive output names and descriptions.
+# =============================================================================
+Outputs:
+
+  PrereqResourceName:
+    Description: Name of the prerequisite resource — reference this when completing kata requirements
+    Value: kata-XXX-PrereqResourceName
+
+  PrereqResourceArn:
+    Description: ARN of the prerequisite resource
+    Value: !GetAtt ExamplePrereqResource.Arn
