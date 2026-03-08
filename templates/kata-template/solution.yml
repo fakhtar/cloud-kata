@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-XXX — Your Kata Title
+  Solution template. Deploys all infrastructure required to pass the
+  kata-XXX validator at 100%.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+# Add parameters here if the template requires user input at deploy time.
+# Remove this section if no parameters are needed.
+# =============================================================================
+Parameters:
+  KataId:
+    Type: String
+    Default: kata-XXX
+    Description: Kata identifier used for resource naming and tagging
+    AllowedValues:
+      - kata-XXX
+
+# =============================================================================
+# Resources
+# =============================================================================
+# All resource names must follow the kata-XXX-ResourceName convention.
+# All resources must include the Project and Kata tags defined below.
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Resource 1 — [Resource description]
+  # ---------------------------------------------------------------------------
+  # Replace this with your actual resource definition.
+  # Resource logical IDs should be descriptive (e.g. FoodOrderingBot, LexRole)
+  # Resource names/identifiers must follow kata-XXX-ResourceName convention.
+  # ---------------------------------------------------------------------------
+  ExampleResource:
+    Type: AWS::Some::ResourceType
+    Properties:
+      Name: kata-XXX-ResourceName
+      # Add your resource properties here
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-XXX
+
+  # ---------------------------------------------------------------------------
+  # Resource 2 — [Resource description]
+  # ---------------------------------------------------------------------------
+  AnotherExampleResource:
+    Type: AWS::Some::OtherResourceType
+    Properties:
+      Name: kata-XXX-AnotherResourceName
+      # Add your resource properties here
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-XXX
+
+# =============================================================================
+# Outputs
+# =============================================================================
+# Include outputs for all key resource identifiers.
+# These help users verify what was deployed and support cleanup.
+# =============================================================================
+Outputs:
+
+  ExampleResourceName:
+    Description: Name of the example resource
+    Value: kata-XXX-ResourceName
+
+  AnotherResourceName:
+    Description: Name of the another resource
+    Value: kata-XXX-AnotherResourceName

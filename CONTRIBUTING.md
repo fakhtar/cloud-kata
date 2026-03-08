@@ -592,19 +592,41 @@ Copy this checklist into your pull request description and check every item befo
 
 The following katas are planned for the CloudKata library. All are open for community contribution. Open an issue to claim one before you start building.
 
+### 100 Level Kata
+
 | ID | Title | Level | Type | Services | Status |
 |---|---|---|---|---|---|
 | kata-100 | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Open |
 | kata-101 | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Open |
 | kata-102 | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Open |
+
+### 200 Level Kata
+
+| ID | Title | Level | Type | Services | Status |
+|---|---|---|---|---|---|
 | kata-200 | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect | Open |
 | kata-201 | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB | Open |
 | kata-202 | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Open |
+
+### 300 Level Kata
+
+| ID | Title | Level | Type | Services | Status |
+|---|---|---|---|---|---|
 | kata-300 | Serverless API — Lambda, API Gateway & DynamoDB | 300 | Breadth | Lambda, API Gateway, DynamoDB | Open |
 | kata-301 | Amazon Connect Contact Flows — IVR Design & Lex Integration | 300 | Depth | Connect, Lex V2 | Open |
 | kata-302 | AI-Powered IVR — Connect, Lex V2 & Lambda Fulfillment | 300 | Breadth | Connect, Lex V2, Lambda | Open |
+
+### 400 Level Kata
+
+| ID | Title | Level | Type | Services | Status |
+|---|---|---|---|---|---|
 | kata-400 | Three-Tier Web App — CloudFront, ALB, EC2 & RDS in Multi-AZ | 400 | Breadth | CloudFront, ALB, EC2, RDS | Open |
 | kata-401 | Amazon Connect Global Resiliency | 400 | Depth | Connect | Open |
+
+### 500 Level Kata
+
+| ID | Title | Level | Type | Services | Status |
+|---|---|---|---|---|---|
 | kata-500 | Contact Center Platform — Connect, Lex V2, Lambda, DynamoDB & CloudWatch | 500 | Breadth | Connect, Lex V2, Lambda, DynamoDB, CloudWatch | Open |
 
 **Status key:**
