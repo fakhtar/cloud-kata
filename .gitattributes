@@ -1,0 +1,36 @@
+# =============================================================================
+# CloudKata .gitattributes
+# Enforces Unix line endings (LF) for all text and script files.
+# This ensures shell scripts run correctly in AWS CloudShell regardless
+# of the contributor's operating system.
+# =============================================================================
+
+# Default behavior — normalize all text files to LF on commit
+* text=auto eol=lf
+
+# Shell scripts — explicitly enforce LF
+*.sh text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# CloudFormation / YAML
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# Git config files
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Binary files — do not apply line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary
+*.tar binary

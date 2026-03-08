@@ -16,7 +16,7 @@ tags:
 estimated_time: 1 hour
 estimated_cost: "$0.00"
 author: Faisal Akhtar
-github: https://github.com/fakhtar
+github: https://github.com/faisalakhtar
 ---
 
 # kata-100 — Amazon Lex V2 Basics: Bots, Intents & Slots
@@ -123,9 +123,22 @@ After creating the bot, intents, and slot types, build the bot locale so the
 bot reaches `Available` status. A bot that has not been built will fail
 validation regardless of whether the intents and slots are correctly configured.
 
+
 ---
 
-### Requirement 6 — Test Utterances
+### Requirement 6 — Bot Alias
+
+Create a bot alias with the following configuration:
+
+- **Alias name:** `kata-100-TestAlias`
+- **Bot version:** `DRAFT`
+- **Locale:** `en_US` must be explicitly enabled on the alias
+
+This alias is required for the validator to run runtime utterance tests. A bot
+alias that does not have the `en_US` locale enabled will fail Check 8.
+---
+
+### Requirement 7 — Test Utterances
 
 Your bot must respond correctly to the following test utterances when invoked
 via the Lex V2 test console or CLI:

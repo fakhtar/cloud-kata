@@ -10,6 +10,7 @@
 # Run this script in AWS CloudShell after building your kata infrastructure.
 #
 # Usage:
+#   sed -i 's/\r//' validate.sh
 #   chmod +x validate.sh
 #   ./validate.sh
 #
@@ -228,44 +229,58 @@ fi
 # ------------------------------------------------------------------------------
 echo "Checking bot responds to test utterances..."
 
-# Build a test session to check utterance routing
-# We use the DRAFT version via the runtime API via CloudShell
-# Note: lexv2-runtime requires the bot alias ID — we use the built-in
-# TestBotAlias for DRAFT version testing
+# Look up kata-100-TestAlias — a dedicated alias with en_US locale explicitly enabled
+TEST_ALIAS_ID=$(aws lexv2-models list-bot-aliases \
+  --bot-id "$BOT_ID" \
+  --query "botAliasSummaries[?botAliasName=='kata-100-TestAlias'].botAliasId | [0]" \
+  --output text 2>/dev/null || echo "NOT_FOUND")
 
-TEST_ALIAS_ID="TSTALIASID"
-TEST_SESSION_ID="cloudkata-validator-$(date +%s)"
-UTTERANCE_FAILURES=0
-
-declare -A TEST_CASES
-TEST_CASES["I want to order a pizza"]="OrderFood"
-TEST_CASES["Can I get a burger"]="OrderFood"
-TEST_CASES["Cancel my order"]="CancelOrder"
-TEST_CASES["I want to cancel"]="CancelOrder"
-
-for UTTERANCE in "${!TEST_CASES[@]}"; do
-  EXPECTED_INTENT="${TEST_CASES[$UTTERANCE]}"
-  RECOGNIZED_INTENT=$(aws lexv2-runtime recognize-text \
-    --bot-id "$BOT_ID" \
-    --bot-alias-id "$TEST_ALIAS_ID" \
-    --locale-id "$LOCALE_ID" \
-    --session-id "$TEST_SESSION_ID" \
-    --text "$UTTERANCE" \
-    --query 'interpretations[0].intent.name' \
-    --output text 2>/dev/null || echo "ERROR")
-
-  if [ "$RECOGNIZED_INTENT" = "$EXPECTED_INTENT" ]; then
-    echo "   ✔ '${UTTERANCE}' → ${RECOGNIZED_INTENT}"
-  else
-    echo "   ✘ '${UTTERANCE}' → Expected '${EXPECTED_INTENT}' but got '${RECOGNIZED_INTENT}'"
-    UTTERANCE_FAILURES=$((UTTERANCE_FAILURES + 1))
-  fi
-done
-
-if [ "$UTTERANCE_FAILURES" -eq 0 ]; then
-  pass "Bot responds correctly to all test utterances"
+if [ "$TEST_ALIAS_ID" = "NOT_FOUND" ] || [ "$TEST_ALIAS_ID" = "None" ] || [ -z "$TEST_ALIAS_ID" ]; then
+  fail "Bot test utterances" "Could not find alias 'kata-100-TestAlias' — ensure the bot alias exists with en_US locale enabled"
 else
-  fail "Bot test utterances" "${UTTERANCE_FAILURES} utterance(s) routed to the wrong intent — review your sample utterances and rebuild the bot"
+  TEST_SESSION_ID="cloudkata-validator-$(date +%s)"
+  UTTERANCE_FAILURES=0
+
+  # Test cases defined as parallel arrays for maximum bash compatibility
+  UTTERANCES=(
+    "I want to order a pizza"
+    "Can I get a burger"
+    "Cancel my order"
+    "I want to cancel"
+  )
+  EXPECTED_INTENTS=(
+    "OrderFood"
+    "OrderFood"
+    "CancelOrder"
+    "CancelOrder"
+  )
+
+  for i in 0 1 2 3; do
+    UTTERANCE="${UTTERANCES[$i]}"
+    EXPECTED_INTENT="${EXPECTED_INTENTS[$i]}"
+
+    RECOGNIZED_INTENT=$(aws lexv2-runtime recognize-text \
+      --bot-id "$BOT_ID" \
+      --bot-alias-id "$TEST_ALIAS_ID" \
+      --locale-id "$LOCALE_ID" \
+      --session-id "${TEST_SESSION_ID}-${i}" \
+      --text "$UTTERANCE" \
+      --query 'interpretations[0].intent.name' \
+      --output text 2>/dev/null || echo "ERROR")
+
+    if [ "$RECOGNIZED_INTENT" = "$EXPECTED_INTENT" ]; then
+      echo "   ✔ '${UTTERANCE}' → ${RECOGNIZED_INTENT}"
+    else
+      echo "   ✘ '${UTTERANCE}' → Expected '${EXPECTED_INTENT}' but got '${RECOGNIZED_INTENT}'"
+      UTTERANCE_FAILURES=$((UTTERANCE_FAILURES + 1))
+    fi
+  done
+
+  if [ "$UTTERANCE_FAILURES" -eq 0 ]; then
+    pass "Bot responds correctly to all test utterances"
+  else
+    fail "Bot test utterances" "${UTTERANCE_FAILURES} utterance(s) routed to the wrong intent — review your sample utterances and rebuild the bot"
+  fi
 fi
 
 # ------------------------------------------------------------------------------
