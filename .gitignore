@@ -1,0 +1,137 @@
+# =============================================================================
+# CloudKata .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# AWS Credentials & Config — NEVER commit these
+# -----------------------------------------------------------------------------
+.aws/
+*.pem
+*.p12
+*.pfx
+credentials
+aws-credentials*
+
+# -----------------------------------------------------------------------------
+# Environment Files
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+
+# -----------------------------------------------------------------------------
+# OS Artifacts
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# -----------------------------------------------------------------------------
+# Editor & IDE Artifacts
+# -----------------------------------------------------------------------------
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (IntelliJ, PyCharm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# -----------------------------------------------------------------------------
+# Terraform (contributors may use locally)
+# -----------------------------------------------------------------------------
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
+# -----------------------------------------------------------------------------
+# Python (contributors may write Python validators)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# -----------------------------------------------------------------------------
+# Node / NPM (in case tooling is added later)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm/
+
+# -----------------------------------------------------------------------------
+# Validator Output & Local Test Artifacts
+# -----------------------------------------------------------------------------
+validator-output*.txt
+validator-output*.log
+*.results.json
+local-test-output/
+
+# -----------------------------------------------------------------------------
+# CloudFormation Packaged Templates (local build artifacts)
+# -----------------------------------------------------------------------------
+packaged-template.yml
+packaged-template.yaml
+samconfig.toml
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+.cache/
