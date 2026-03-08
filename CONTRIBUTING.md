@@ -238,6 +238,7 @@ Resource name: `kata-XXX-ResourceName`
 Once you have built the required infrastructure, run the validator in AWS CloudShell:
 
 \`\`\`bash
+sed -i 's/\r//' validate.sh
 chmod +x validate.sh
 ./validate.sh
 \`\`\`
@@ -270,6 +271,7 @@ Run the cleanup script to remove any resources not handled by CloudFormation,
 or if you built the infrastructure manually without using the solution template:
 
 \`\`\`bash
+sed -i 's/\r//' cleanup.sh
 chmod +x cleanup.sh
 ./cleanup.sh
 \`\`\`

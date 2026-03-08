@@ -229,14 +229,14 @@ fi
 # ------------------------------------------------------------------------------
 echo "Checking bot responds to test utterances..."
 
-# Dynamically fetch the TestBotAlias ID — more reliable than hardcoding
+# Look up kata-100-TestAlias — a dedicated alias with en_US locale explicitly enabled
 TEST_ALIAS_ID=$(aws lexv2-models list-bot-aliases \
   --bot-id "$BOT_ID" \
-  --query "botAliasSummaries[?botAliasName=='TestBotAlias'].botAliasId | [0]" \
+  --query "botAliasSummaries[?botAliasName=='kata-100-TestAlias'].botAliasId | [0]" \
   --output text 2>/dev/null || echo "NOT_FOUND")
 
 if [ "$TEST_ALIAS_ID" = "NOT_FOUND" ] || [ "$TEST_ALIAS_ID" = "None" ] || [ -z "$TEST_ALIAS_ID" ]; then
-  fail "Bot test utterances" "Could not find TestBotAlias — ensure the bot has been built successfully"
+  fail "Bot test utterances" "Could not find alias 'kata-100-TestAlias' — ensure the bot alias exists with en_US locale enabled"
 else
   TEST_SESSION_ID="cloudkata-validator-$(date +%s)"
   UTTERANCE_FAILURES=0

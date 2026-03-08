@@ -21,6 +21,7 @@
 #   deletion, or resources you created manually without the solution template.
 #
 #   Usage:
+#     sed -i 's/\r//' cleanup.sh
 #     chmod +x cleanup.sh
 #     ./cleanup.sh
 #

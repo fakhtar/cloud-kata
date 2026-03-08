@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-100 — Amazon Lex V2 Basics: Bots, Intents & Slots
+  Solution template. Deploys all infrastructure required to pass the
+  kata-100 validator at 100%.
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # IAM Role — Lex V2 Service Role
+  # Allows Amazon Lex to call AWS services on your behalf
+  # ---------------------------------------------------------------------------
+  LexServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-100-LexServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lexv2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonLexFullAccess
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-100
+
+  # ---------------------------------------------------------------------------
+  # Lex V2 Bot — FoodOrderingBot
+  # ---------------------------------------------------------------------------
+  FoodOrderingBot:
+    Type: AWS::Lex::Bot
+    Properties:
+      Name: kata-100-FoodOrderingBot
+      Description: "CloudKata kata-100 — Food ordering bot covering Lex V2 basics"
+      RoleArn: !GetAtt LexServiceRole.Arn
+      DataPrivacy:
+        ChildDirected: false
+      IdleSessionTTLInSeconds: 300
+      AutoBuildBotLocales: true
+      BotLocales:
+        - LocaleId: en_US
+          Description: "English (US) locale for kata-100-FoodOrderingBot"
+          NluConfidenceThreshold: 0.40
+          SlotTypes:
+            # -----------------------------------------------------------------
+            # Custom Slot Type — FoodItemType
+            # -----------------------------------------------------------------
+            - Name: kata-100-FoodItemType
+              Description: "Types of food items available to order"
+              SlotTypeValues:
+                - SampleValue:
+                    Value: Pizza
+                - SampleValue:
+                    Value: Burger
+                - SampleValue:
+                    Value: Salad
+                - SampleValue:
+                    Value: Tacos
+              ValueSelectionSetting:
+                ResolutionStrategy: TOP_RESOLUTION
+
+          Intents:
+            # -----------------------------------------------------------------
+            # Intent 1 — OrderFood
+            # -----------------------------------------------------------------
+            - Name: OrderFood
+              Description: "Intent to handle food ordering requests"
+              SampleUtterances:
+                - Utterance: "I want to order a pizza"
+                - Utterance: "Can I get a burger"
+                - Utterance: "I would like to order some food"
+                - Utterance: "I want to place a food order"
+                - Utterance: "Order me a {FoodItem}"
+                - Utterance: "Can I order a {FoodItem} please"
+                - Utterance: "I am hungry and want a {FoodItem}"
+              Slots:
+                - Name: FoodItem
+                  Description: "The food item the user wants to order"
+                  SlotTypeName: kata-100-FoodItemType
+                  ValueElicitationSetting:
+                    SlotConstraint: Required
+                    PromptSpecification:
+                      MaxRetries: 3
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "What would you like to order? We have Pizza, Burger, Salad, and Tacos."
+              SlotPriorities:
+                - Priority: 1
+                  SlotName: FoodItem
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Great choice! Your {FoodItem} order has been placed. Enjoy your meal!"
+                IsActive: true
+
+            # -----------------------------------------------------------------
+            # Intent 2 — CancelOrder
+            # -----------------------------------------------------------------
+            - Name: CancelOrder
+              Description: "Intent to handle order cancellation requests"
+              SampleUtterances:
+                - Utterance: "Cancel my order"
+                - Utterance: "I want to cancel"
+                - Utterance: "Please cancel my order"
+                - Utterance: "I would like to cancel my order"
+                - Utterance: "Stop my order"
+                - Utterance: "I changed my mind"
+                - Utterance: "Cancel that for me"
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Your order has been cancelled. We hope to serve you again soon!"
+                IsActive: true
+
+            # -----------------------------------------------------------------
+            # FallbackIntent — Required by Lex V2
+            # -----------------------------------------------------------------
+            - Name: FallbackIntent
+              Description: "Default fallback intent when no other intent matches"
+              ParentIntentSignature: AMAZON.FallbackIntent
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Sorry, I did not understand that. You can order food or cancel an existing order."
+                IsActive: true
+
+  # ---------------------------------------------------------------------------
+  # Bot Version — publishes DRAFT as Version 1
+  # AWS::Lex::BotAlias requires a numeric version — DRAFT is not accepted
+  # at the API level. This resource publishes Version 1 from DRAFT.
+  # ---------------------------------------------------------------------------
+  FoodOrderingBotVersion:
+    DependsOn: FoodOrderingBot
+    Type: AWS::Lex::BotVersion
+    Properties:
+      BotId: !Ref FoodOrderingBot
+      BotVersionLocaleSpecification:
+        - LocaleId: en_US
+          BotVersionLocaleDetails:
+            SourceBotVersion: DRAFT
+      Description: "kata-100 Version 1 — published from DRAFT"
+
+  # ---------------------------------------------------------------------------
+  # Bot Alias — kata-100-TestAlias
+  # A dedicated alias pointing to Version 1 with en_US locale explicitly enabled.
+  # Used by the validator to run runtime utterance tests via recognize-text.
+  # ---------------------------------------------------------------------------
+  FoodOrderingBotAlias:
+    DependsOn: FoodOrderingBotVersion
+    Type: AWS::Lex::BotAlias
+    Properties:
+      BotId: !Ref FoodOrderingBot
+      BotAliasName: kata-100-TestAlias
+      BotVersion: !GetAtt FoodOrderingBotVersion.BotVersion
+      Description: "CloudKata kata-100 test alias — used by validate.sh for utterance testing"
+      BotAliasLocaleSettings:
+        - LocaleId: en_US
+          BotAliasLocaleSetting:
+            Enabled: true
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+Outputs:
+
+  BotId:
+    Description: The ID of the kata-100-FoodOrderingBot
+    Value: !Ref FoodOrderingBot
+
+  BotName:
+    Description: The name of the Lex V2 bot
+    Value: kata-100-FoodOrderingBot
+
+  BotVersion:
+    Description: The published bot version number
+    Value: !GetAtt FoodOrderingBotVersion.BotVersion
+
+  BotAliasId:
+    Description: The ID of the kata-100-TestAlias used for runtime utterance testing
+    Value: !Ref FoodOrderingBotAlias
+
+  LexServiceRoleArn:
+    Description: ARN of the IAM role used by the Lex bot
+    Value: !GetAtt LexServiceRole.Arn
+
+  BotLocale:
+    Description: The locale configured for the bot
+    Value: en_US
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell to check all kata-100 requirements"
