@@ -161,6 +161,7 @@ Once you have built the required infrastructure, open AWS CloudShell and
 upload or copy `validate.sh` to your CloudShell environment, then run:
 
 ```bash
+sed -i 's/\r//' validate.sh
 chmod +x validate.sh
 ./validate.sh
 ```
