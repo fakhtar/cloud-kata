@@ -16,7 +16,7 @@ tags:
 estimated_time: 1 hour
 estimated_cost: "$0.00"
 author: Faisal Akhtar
-github: https://github.com/faisalakhtar
+github: https://github.com/fakhtar
 ---
 
 # kata-100 — Amazon Lex V2 Basics: Bots, Intents & Slots
@@ -213,15 +213,11 @@ aws cloudformation delete-stack --stack-name kata-100-solution
 aws cloudformation wait stack-delete-complete --stack-name kata-100-solution
 ```
 
-### Step 2 — Run the cleanup script
+### Step 2 — Manual Cleanup
 
-Run the cleanup script to remove any resources not handled by CloudFormation,
-or if you built the infrastructure manually:
+If you created any resources manually via the console or via the CLI, it is your responsiblity to delete them to avoind incurring on-going costs.
 
-```bash
-chmod +x cleanup.sh
-./cleanup.sh
-```
+Read the instructions again and work backwards to ensure you have deleted all created resources.
 
 ### Step 3 — Verify in the console
 
@@ -230,6 +226,8 @@ no longer exists.
 
 > ⚠️ If you leave infrastructure running, costs will continue to accumulate
 > and are your responsibility.
+
+
 
 ---
 

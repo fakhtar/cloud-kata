@@ -137,16 +137,11 @@ via CloudFormation. Stack deletion will remove most resources automatically.
 - Select the stack(s) created for this kata
 - Choose **Delete** and wait for deletion to complete before proceeding
 
-### Step 2 — Run the cleanup script
+### Step 2 — Manual Cleanup
 
-Run the cleanup script to remove any resources not handled by CloudFormation,
-or if you built the infrastructure manually without using the solution template:
+If you created any resources manually via the console or via the CLI, it is your responsiblity to delete them to avoind incurring on-going costs.
 
-```bash
-sed -i 's/\r//' cleanup.sh
-chmod +x cleanup.sh
-./cleanup.sh
-```
+Read the instructions again and work backwards to ensure you have deleted all created resources.
 
 ### Step 3 — Verify in the console
 
