@@ -11,7 +11,7 @@ No multiple choice. No honor system. Just real infrastructure, real AWS, and a s
 ## How It Works
 
 1. **Pick a kata** from the library based on your skill level and topic
-2. **Read the requirements** in `LAB.md` — you are given a spec, not a tutorial
+2. **Read the requirements** in `README.md` — you are given a spec, not a tutorial
 3. **Build the infrastructure** in your own AWS account using any tools you choose
 4. **Run the validator** in AWS CloudShell to get your score
 5. **Clean up** your resources using the provided cleanup instructions
@@ -81,7 +81,7 @@ CloudKata uses a college course numbering system to indicate difficulty:
 
 | ID | Title | Level | Type | Services |
 |---|---|---|---|---|
-| [kata-100](./katas/kata-100/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 |
+| [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 |
 | [kata-101](./katas/kata-101/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM |
 | [kata-102](./katas/kata-102/) | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda |
 | [kata-200](./katas/kata-200/) | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect |

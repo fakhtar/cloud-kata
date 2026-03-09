@@ -11,7 +11,7 @@ Description: >
 # Only include prereqs.yml if your kata requires infrastructure to exist
 # before the user starts. If no prerequisites are needed, delete this file.
 #
-# If you include this file, LAB.md must clearly instruct the user to deploy
+# If you include this file, README.md must clearly instruct the user to deploy
 # this stack before starting the kata requirements.
 # =============================================================================
 

@@ -15,11 +15,10 @@ Read this guide fully before you start building. The first kata in the library w
 - [Kata Specification](#kata-specification)
   - [Folder Structure](#folder-structure)
   - [Metadata & Frontmatter](#metadata--frontmatter)
-  - [LAB.md](#labmd)
+  - [README.md](#labmd)
   - [validate.sh](#validatesh)
   - [solution.yml](#solutionyml)
   - [prereqs.yml](#prereqsyml)
-  - [cleanup.sh](#cleanupsh)
   - [HINTS.md](#hintsmd)
 - [Quality Standards](#quality-standards)
 - [Pull Request Checklist](#pull-request-checklist)
@@ -55,15 +54,14 @@ All AWS resources created as part of a kata must be prefixed with the kata ID.
 
 **Why this matters:**
 
-- **Safe cleanup** — the cleanup script can target resources by prefix without risk of accidentally deleting unrelated resources in the user's AWS account
+- **Safe cleanup** — During cleanup, the user can target any manually created resources by prefix without risk of accidentally deleting unrelated resources in the user's AWS account
 - **Reliable validation** — the validator can find resources by exact name without ambiguity
 - **Account hygiene** — users may run multiple katas in the same account; prefixed names prevent collisions
 
 This convention is mandatory and applies to:
-- All resource names specified in `LAB.md` requirements
+- All resource names specified in `README.md` requirements
 - All resource names in `validate.sh` checks
 - All resource names in `solution.yml`
-- All resource names targeted by `cleanup.sh`
 
 ---
 
@@ -84,10 +82,6 @@ This prevents duplicated effort and ensures the kata fits the roadmap.
 
 Fork `cloud-kata` to your own GitHub account and clone it locally.
 
-```bash
-git clone https://github.com/YOUR_USERNAME/cloud-kata.git
-cd cloud-kata
-```
 
 ### Step 3 — Copy the template
 
@@ -112,7 +106,6 @@ Before submitting, you must:
 3. Tear down the manual infrastructure
 4. Deploy `solution.yml` via CloudFormation
 5. Run `validate.sh` again and confirm it passes 100%
-6. Run `cleanup.sh` and confirm all resources are removed cleanly
 
 ### Step 6 — Open a pull request
 
@@ -131,10 +124,9 @@ Every kata lives in its own folder under `katas/` and follows this exact structu
 ```
 katas/
 └── kata-XXX/
-    ├── LAB.md           # Required — kata instructions
+    ├── README.md        # Required — kata instructions
     ├── validate.sh      # Required — CloudShell validator script
     ├── solution.yml     # Required — CloudFormation solution template
-    ├── cleanup.sh       # Required — cleanup script
     ├── prereqs.yml      # Optional — prerequisite infrastructure template
     └── HINTS.md         # Optional — spoiler-gated hints
 ```
@@ -143,7 +135,7 @@ katas/
 
 ### Metadata & Frontmatter
 
-Every `LAB.md` must begin with a metadata block. This is the single source of truth for kata metadata including tags.
+Every `README.md` must begin with a metadata block. This is the single source of truth for kata metadata including tags.
 
 ```
 ---
@@ -181,7 +173,7 @@ github: https://github.com/yourusername
 
 ---
 
-### LAB.md
+### README.md
 
 The lab instructions file. This is what the user reads and works from.
 
@@ -266,15 +258,11 @@ CloudFormation. Stack deletion will remove most resources automatically.
 - Select the stack(s) created for this kata
 - Choose Delete and wait for deletion to complete
 
-### Step 2 — Run the cleanup script
-Run the cleanup script to remove any resources not handled by CloudFormation,
-or if you built the infrastructure manually without using the solution template:
+### Step 2 — Manual Cleanup
 
-\`\`\`bash
-sed -i 's/\r//' cleanup.sh
-chmod +x cleanup.sh
-./cleanup.sh
-\`\`\`
+If you created any resources manually via the console or via the CLI, it is your responsiblity to delete them to avoind incurring on-going costs.
+
+Read the instructions again and work backwards to ensure you have deleted all created resources.
 
 ### Step 3 — Verify in the console
 Check the AWS console to confirm all resources have been removed.
@@ -407,7 +395,7 @@ Tags:
 
 Optional. Only include this file if the kata requires infrastructure that must exist before the user starts — for example, an existing Amazon Connect instance.
 
-If included, `LAB.md` must clearly instruct the user to deploy `prereqs.yml` before starting the kata requirements.
+If included, `README.md` must clearly instruct the user to deploy `prereqs.yml` before starting the kata requirements.
 
 **Standards:**
 
@@ -415,63 +403,6 @@ If included, `LAB.md` must clearly instruct the user to deploy `prereqs.yml` bef
 - Same resource naming convention as all other kata files
 - Must include clear `Outputs` for any resources the user will reference during the kata
 - Must be deployable independently of `solution.yml`
-
----
-
-### cleanup.sh
-
-A script that removes any resources not automatically handled by CloudFormation stack deletion.
-
-**Standards:**
-
-- Must run in AWS CloudShell
-- Must target resources using the `kata-XXX-` prefix to avoid deleting unrelated resources
-- Must handle the case where resources do not exist — do not error on missing resources
-- Must print a confirmation message for each deleted resource
-- Must include a final message confirming cleanup is complete
-- Must include a note reminding the user to verify in the AWS Console
-- Must include a reminder at the top to delete CloudFormation stacks first if applicable
-
-**Template structure:**
-
-```bash
-#!/bin/bash
-# =============================================================================
-# CloudKata — kata-XXX Cleanup
-# =============================================================================
-#
-# IMPORTANT: If you deployed solution.yml or prereqs.yml, delete those
-# CloudFormation stacks first before running this script.
-# This script removes any resources not handled by CloudFormation stack
-# deletion, or resources created manually without the solution template.
-# =============================================================================
-
-echo ""
-echo "=================================================="
-echo " CloudKata Cleanup — kata-XXX"
-echo " Your Kata Title"
-echo "=================================================="
-echo ""
-echo "NOTE: If you deployed solution.yml or prereqs.yml, please delete"
-echo "those CloudFormation stacks first via the AWS Console or CLI."
-echo ""
-
-# Delete resources in reverse dependency order
-# All resource names must use the kata-XXX- prefix
-# Example:
-echo "Deleting kata-XXX-ResourceName..."
-aws some-service delete-something --name "kata-XXX-ResourceName" 2>/dev/null && \
-  echo "✅ Deleted kata-XXX-ResourceName" || \
-  echo "⚠️  kata-XXX-ResourceName not found or already deleted"
-
-echo ""
-echo "=================================================="
-echo " Cleanup complete."
-echo " Please verify in the AWS Console that all"
-echo " resources have been removed."
-echo "=================================================="
-echo ""
-```
 
 ---
 
@@ -514,19 +445,16 @@ Your hint text here.
 Before submitting a pull request, your kata must meet all of the following standards:
 
 - The kata has a clear, specific title that accurately describes what is being built
-- `LAB.md` gives requirements, not step-by-step instructions
+- `README.md` gives requirements, not step-by-step instructions
 - All resource names in requirements follow the `kata-XXX-ResourceName` convention
-- Every requirement in `LAB.md` maps to at least one check in `validate.sh`
+- Every requirement in `README.md` maps to at least one check in `validate.sh`
 - `validate.sh` passes 100% when `solution.yml` is deployed
 - `validate.sh` produces meaningful failure messages that help the user self-diagnose
 - `validate.sh` checks resources by their prefixed names only
 - `solution.yml` deploys cleanly in a standard AWS account without modification
 - All resources in `solution.yml` follow the naming convention and are tagged with `Project: CloudKata` and `Kata: kata-XXX`
-- `cleanup.sh` targets resources by `kata-XXX-` prefix only
-- `cleanup.sh` includes the CloudFormation stack deletion reminder
-- `cleanup.sh` removes all resources without errors
-- Cost and time estimates are realistic and documented in `LAB.md` frontmatter
-- The cost warning is present and unmodified in `LAB.md`
+- Cost and time estimates are realistic and documented in `README.md` frontmatter
+- The cost warning is present and unmodified in `README.md`
 - All files use consistent naming and follow the folder structure exactly
 
 ---
@@ -540,24 +468,22 @@ Copy this checklist into your pull request description and check every item befo
 
 ### Structure
 - [ ] Kata folder is named correctly: `katas/kata-XXX/`
-- [ ] All required files are present: LAB.md, validate.sh, solution.yml, cleanup.sh
+- [ ] All required files are present: README.md, validate.sh, solution.yml
 - [ ] Optional files (prereqs.yml, HINTS.md) are included only if needed
 
 ### Resource Naming
-- [ ] All resource names in LAB.md follow the kata-XXX-ResourceName convention
+- [ ] All resource names in README.md follow the kata-XXX-ResourceName convention
 - [ ] All resource names in validate.sh match the naming convention exactly
 - [ ] All resource names in solution.yml match the naming convention exactly
-- [ ] cleanup.sh targets resources by kata-XXX- prefix only
 
-### LAB.md
-- [ ] Frontmatter is complete and all fields are populated
+### README.md
 - [ ] Overview clearly describes what the user will build
 - [ ] Requirements are written as a spec, not step-by-step instructions
 - [ ] Cost and time estimates are included
 - [ ] Cost warning is present and unmodified
 - [ ] Validator usage instructions are included
 - [ ] Cleanup instructions include CloudFormation stack deletion as Step 1
-- [ ] Cleanup instructions include running cleanup.sh as Step 2
+- [ ] Cleanup instructions include manual cleanup as Step 2
 - [ ] Cleanup instructions include console verification as Step 3
 
 ### validate.sh
@@ -574,32 +500,23 @@ Copy this checklist into your pull request description and check every item befo
 - [ ] Outputs section is present
 - [ ] Running validate.sh after deploying solution.yml passes 100%
 
-### cleanup.sh
-- [ ] Includes CloudFormation stack deletion reminder at the top
-- [ ] Targets resources by kata-XXX- prefix only
-- [ ] Runs successfully in AWS CloudShell
-- [ ] All resources are removed cleanly
-- [ ] Script handles missing resources gracefully
-- [ ] Completion message is present
-
 ### Self-Testing
 - [ ] I manually built the infrastructure and ran validate.sh
 - [ ] I deployed solution.yml and confirmed validate.sh passes 100%
-- [ ] I ran cleanup.sh and confirmed all resources were removed
 ```
 
 ---
 
 ## Kata Roadmap
 
-The following katas are planned for the CloudKata library. All are open for community contribution. Open an issue to claim one before you start building.
+The following katas are planned for the CloudKata library. All are open for community contribution. Open an issue to claim one before you start building. If you want to contribute a kata that is not on this road-map, open an issue and a maintainer will update the road-map.
 
 ### 100 Level Kata
 
 | ID | Title | Level | Type | Services | Status |
 |---|---|---|---|---|---|
-| kata-100 | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Open |
-| kata-101 | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Open |
+| [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Published |
+| kata-101 | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | In Progress |
 | kata-102 | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Open |
 
 ### 200 Level Kata
