@@ -1,10 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: >
-  CloudKata kata-101 — IAM Fundamentals: Roles, Policies & Trust Relationships
-  Solution template. Deploys kata-101-LambdaExecutionRole and
-  kata-101-LambdaExecutionPolicy with least privilege permissions for a
-  Lambda function that reads and writes to a specific DynamoDB table and
-  writes logs to CloudWatch Logs.
+Description: "CloudKata kata-101 - IAM Fundamentals: Roles, Policies and Trust Relationships. Deploys kata-101-LambdaExecutionRole and kata-101-LambdaExecutionPolicy with least privilege permissions."
 
 # ==============================================================================
 # Resources
@@ -19,9 +14,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: kata-101-LambdaExecutionRole
-      Description: >
-        Execution role for kata-101. Allows Lambda to read and write to the
-        kata-101-OrdersTable DynamoDB table and write logs to CloudWatch Logs.
+      Description: "Execution role for kata-101. Allows Lambda to read and write to kata-101-OrdersTable and write logs to CloudWatch Logs."
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -47,9 +40,7 @@ Resources:
     DependsOn: LambdaExecutionRole
     Properties:
       ManagedPolicyName: kata-101-LambdaExecutionPolicy
-      Description: >
-        Least privilege policy for kata-101. Grants read/write access to
-        kata-101-OrdersTable only, and log writing to kata-101 log groups only.
+      Description: "Least privilege policy for kata-101. Grants read/write access to kata-101-OrdersTable and log writing to kata-101 log groups only."
       Roles:
         - !Ref LambdaExecutionRole
       PolicyDocument:
