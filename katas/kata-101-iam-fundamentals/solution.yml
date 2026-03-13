@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-101 - IAM Fundamentals: Roles, Policies and Trust Relationships. Deploys kata-101-LambdaExecutionRole and kata-101-LambdaExecutionPolicy with least privilege permissions."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # IAM Role — kata-101-LambdaExecutionRole
+  # Trust policy allows only the Lambda service to assume this role.
+  # ----------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-101-LambdaExecutionRole
+      Description: "Execution role for kata-101. Allows Lambda to read and write to kata-101-OrdersTable and write logs to CloudWatch Logs."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-101
+
+  # ----------------------------------------------------------------------------
+  # Customer Managed Policy — kata-101-LambdaExecutionPolicy
+  # Least privilege: exact actions required, scoped to specific resources.
+  # Attached to LambdaExecutionRole via the Roles property.
+  # ----------------------------------------------------------------------------
+  LambdaExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: LambdaExecutionRole
+    Properties:
+      ManagedPolicyName: kata-101-LambdaExecutionPolicy
+      Description: "Least privilege policy for kata-101. Grants read/write access to kata-101-OrdersTable and log writing to kata-101 log groups only."
+      Roles:
+        - !Ref LambdaExecutionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DynamoDBTableAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+            Resource:
+              !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/kata-101-OrdersTable"
+
+          - Sid: CloudWatchLogsAccess
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/kata-101-*"
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  RoleName:
+    Description: Name of the Lambda execution role
+    Value: !Ref LambdaExecutionRole
+
+  RoleArn:
+    Description: ARN of the Lambda execution role
+    Value: !GetAtt LambdaExecutionRole.Arn
+
+  PolicyArn:
+    Description: ARN of the customer managed policy
+    Value: !Ref LambdaExecutionPolicy

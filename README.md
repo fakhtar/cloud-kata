@@ -10,8 +10,7 @@ No multiple choice. No honor system. Just real infrastructure, real AWS, and a s
 
 ## How It Works
 
-1. **Pick a kata** from the library based on your skill level and topic
-2. **Read the requirements** in `README.md` — you are given a spec, not a tutorial
+1. **Pick a kata** from the library based on your skill leve2. **Read the requirements** in `README.md` — you are given a spec, not a tutorial
 3. **Build the infrastructure** in your own AWS account using any tools you choose
 4. **Run the validator** in AWS CloudShell to get your score
 5. **Clean up** your resources using the provided cleanup instructions
@@ -78,21 +77,6 @@ CloudKata uses a college course numbering system to indicate difficulty:
 ---
 
 ## Kata Library
-
-| ID | Title | Level | Type | Services |
-|---|---|---|---|---|
-| [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 |
-| [kata-101](./katas/kata-101/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM |
-| [kata-102](./katas/kata-102/) | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda |
-| [kata-200](./katas/kata-200/) | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect |
-| [kata-201](./katas/kata-201/) | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB |
-| [kata-202](./katas/kata-202/) | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda |
-| [kata-300](./katas/kata-300/) | Serverless API — Lambda, API Gateway & DynamoDB | 300 | Breadth | Lambda, API Gateway, DynamoDB |
-| [kata-301](./katas/kata-301/) | Amazon Connect Contact Flows — IVR Design & Lex Integration | 300 | Depth | Connect, Lex V2 |
-| [kata-302](./katas/kata-302/) | AI-Powered IVR — Connect, Lex V2 & Lambda Fulfillment | 300 | Breadth | Connect, Lex V2, Lambda |
-| [kata-400](./katas/kata-400/) | Three-Tier Web App — CloudFront, ALB, EC2 & RDS in Multi-AZ | 400 | Breadth | CloudFront, ALB, EC2, RDS |
-| [kata-401](./katas/kata-401/) | Amazon Connect Global Resiliency | 400 | Depth | Connect |
-| [kata-500](./katas/kata-500/) | Contact Center Platform — Connect, Lex V2, Lambda, DynamoDB & CloudWatch | 500 | Breadth | Connect, Lex V2, Lambda, DynamoDB, CloudWatch |
 
 > Kata folders will be populated as they are published. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the roadmap and how to contribute a kata.
 
