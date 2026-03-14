@@ -10,7 +10,8 @@ No multiple choice. No honor system. Just real infrastructure, real AWS, and a s
 
 ## How It Works
 
-1. **Pick a kata** from the library based on your skill leve2. **Read the requirements** in `README.md` — you are given a spec, not a tutorial
+1. **Pick a kata** from the library based on your skill level
+2. **Read the requirements** in `README.md` — you are given a spec, not a tutorial
 3. **Build the infrastructure** in your own AWS account using any tools you choose
 4. **Run the validator** in AWS CloudShell to get your score
 5. **Clean up** your resources using the provided cleanup instructions
@@ -27,7 +28,7 @@ You are encouraged to:
 - Consult the AWS documentation
 - Use AI assistants like Claude or ChatGPT
 - Reference previous projects or notes
-- Searnch the web
+- Search the web
 - Call a friend
 
 How you get there is your business. The validator only cares about what you built.
@@ -78,7 +79,16 @@ CloudKata uses a college course numbering system to indicate difficulty:
 
 ## Kata Library
 
-> Kata folders will be populated as they are published. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the roadmap and how to contribute a kata.
+### 100 — Introductory
+
+| ID | Title | Level | Type | Services | Status |
+|---|---|---|---|---|---|
+| [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Published |
+| [kata-101](./katas/kata-101-iam-fundamentals/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Published |
+
+
+> Want to contribute a kata? Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for a roadmap.
+Browse the [open issues](../../issues) to claim one, or propose a new one.
 
 ---
 
@@ -121,14 +131,14 @@ CloudKata is open source because this problem is not unique to me. If you have e
 
 CloudKata grows through community contributions. If you want to contribute a kata, please read [CONTRIBUTING.md](./CONTRIBUTING.md) for the full kata specification, quality standards, and submission process.
 
-Have an idea for a kata? Open an issue and claim it before you start building.
+Browse the [open issues](../../issues) to find a kata to claim. All open katas in the library table above have a corresponding GitHub issue. Comment on the issue to claim it before you start building.
 
 ---
 
 ## Created By
 
 **Faisal Akhtar**
-[LinkedIn](https://www.linkedin.com/in/faisalakhtar/)
+[LinkedIn](https://www.linkedin.com/in/faisalakhtar/) · [GitHub](https://github.com/fakhtar)
 
 ---
 
