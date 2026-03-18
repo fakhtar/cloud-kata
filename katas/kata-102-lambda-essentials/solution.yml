@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-102 - Lambda Essentials: Functions, Triggers and Environment Variables. Deploys kata-102-EnvironmentReader Lambda function with execution role, environment variable, and non-default timeout and memory configuration."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # IAM Role — kata-102-LambdaExecutionRole
+  # Trust policy allows only the Lambda service to assume this role.
+  # AWSLambdaBasicExecutionRole is used intentionally at the 100 level.
+  # This is not best practice — see kata-101 for least privilege IAM patterns.
+  # ----------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-102-LambdaExecutionRole
+      Description: "Execution role for kata-102-EnvironmentReader Lambda function."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-102
+
+  # ----------------------------------------------------------------------------
+  # Lambda Function — kata-102-EnvironmentReader
+  # Reads APP_ENVIRONMENT from environment variables and returns it in the
+  # response body. Runtime: python3.12. Handler: index.lambda_handler.
+  # Timeout and memory set beyond defaults intentionally.
+  # ----------------------------------------------------------------------------
+  EnvironmentReaderFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
+    Properties:
+      FunctionName: kata-102-EnvironmentReader
+      Description: "Reads APP_ENVIRONMENT variable and returns a structured response. CloudKata kata-102."
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          APP_ENVIRONMENT: production
+      Code:
+        ZipFile: |
+          import json
+          import os
+
+          def lambda_handler(event, context):
+              environment = os.environ.get('APP_ENVIRONMENT', 'unknown')
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({
+                      'message': 'Function executed successfully',
+                      'environment': environment
+                  })
+              }
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-102
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  FunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref EnvironmentReaderFunction
+
+  FunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt EnvironmentReaderFunction.Arn
+
+  RoleArn:
+    Description: ARN of the Lambda execution role
+    Value: !GetAtt LambdaExecutionRole.Arn

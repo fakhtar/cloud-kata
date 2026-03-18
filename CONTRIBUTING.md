@@ -517,7 +517,7 @@ The following katas are planned for the CloudKata library. All are open for comm
 |---|---|---|---|---|---|
 | [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Published |
 | [kata-101](./katas/kata-101-iam-fundamentals/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Published |
-| kata-102 | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | In-Progress |
+| [kata-102](./katas/kata-102-lambda-essentials/)  | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Published |
 
 ### 200 Level Kata
 
