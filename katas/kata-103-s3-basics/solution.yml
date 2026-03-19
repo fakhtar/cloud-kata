@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-103 - S3 Basics: Buckets, Versioning and Security. Deploys kata-103-bucket with versioning enabled, all public access blocked, and SSE-S3 default encryption."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # S3 Bucket — kata-103-bucket-<account-id>
+  # Bucket name includes account ID to guarantee global uniqueness.
+  # Versioning enabled, all public access blocked, SSE-S3 encryption enabled.
+  # ----------------------------------------------------------------------------
+  KataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "kata-103-bucket-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-103
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref KataBucket
+
+  BucketArn:
+    Description: ARN of the S3 bucket
+    Value: !GetAtt KataBucket.Arn
