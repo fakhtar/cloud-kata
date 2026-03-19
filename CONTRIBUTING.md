@@ -519,6 +519,8 @@ The following katas are planned for the CloudKata library. All are open for comm
 | [kata-101](./katas/kata-101-iam-fundamentals/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Published |
 | [kata-102](./katas/kata-102-lambda-essentials/)  | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Published |
 | [kata-103](./katas/kata-103-s3-basics/)  | S3 Basics — Buckets, Versioning & Security | 100 | Depth | S3 | Published |
+| [kata-104](./katas/kata-104-vpc-basics/)  | VPC Basics: Networking Constructs & Routing | 100 | Depth | VPC | Published |
+
 
 ### 200 Level Kata
 

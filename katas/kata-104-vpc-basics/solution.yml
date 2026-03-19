@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-104 - VPC Basics: Networking Constructs and Routing. Deploys kata-104-VPC with two public subnets in different AZs, an internet gateway, a public route table with default route, and subnet associations."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # VPC — kata-104-VPC
+  # CIDR 10.104.0.0/16. DNS support and hostnames enabled.
+  # ----------------------------------------------------------------------------
+  KataVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.104.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: kata-104-VPC
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-104
+
+  # ----------------------------------------------------------------------------
+  # Public Subnet 1 — kata-104-PublicSubnet1
+  # CIDR 10.104.1.0/24 in the first available AZ.
+  # ----------------------------------------------------------------------------
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KataVPC
+      CidrBlock: 10.104.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: kata-104-PublicSubnet1
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-104
+
+  # ----------------------------------------------------------------------------
+  # Public Subnet 2 — kata-104-PublicSubnet2
+  # CIDR 10.104.2.0/24 in the second available AZ.
+  # ----------------------------------------------------------------------------
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref KataVPC
+      CidrBlock: 10.104.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: kata-104-PublicSubnet2
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-104
+
+  # ----------------------------------------------------------------------------
+  # Internet Gateway — kata-104-IGW
+  # ----------------------------------------------------------------------------
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: kata-104-IGW
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-104
+
+  # ----------------------------------------------------------------------------
+  # VPC Gateway Attachment — attaches the IGW to the VPC
+  # ----------------------------------------------------------------------------
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref KataVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ----------------------------------------------------------------------------
+  # Route Table — kata-104-PublicRouteTable
+  # ----------------------------------------------------------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref KataVPC
+      Tags:
+        - Key: Name
+          Value: kata-104-PublicRouteTable
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-104
+
+  # ----------------------------------------------------------------------------
+  # Default Route — 0.0.0.0/0 via Internet Gateway
+  # DependsOn VPCGatewayAttachment ensures IGW is attached before route is added.
+  # ----------------------------------------------------------------------------
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # ----------------------------------------------------------------------------
+  # Subnet Route Table Associations
+  # Both public subnets associated with the public route table.
+  # ----------------------------------------------------------------------------
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  VpcId:
+    Description: ID of the VPC
+    Value: !Ref KataVPC
+
+  PublicSubnet1Id:
+    Description: ID of public subnet 1
+    Value: !Ref PublicSubnet1
+
+  PublicSubnet2Id:
+    Description: ID of public subnet 2
+    Value: !Ref PublicSubnet2
+
+  InternetGatewayId:
+    Description: ID of the internet gateway
+    Value: !Ref InternetGateway
+
+  RouteTableId:
+    Description: ID of the public route table
+    Value: !Ref PublicRouteTable
