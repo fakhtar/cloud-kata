@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-105 - KMS Basics: Keys, Aliases and Rotation. Deploys a symmetric customer managed KMS key with alias/kata-105-key, automatic key rotation enabled, and a minimum deletion window of 7 days."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # KMS Key — symmetric encryption, ENCRYPT_DECRYPT, rotation enabled.
+  # KeyPolicy grants the account root full access to prevent the key from
+  # becoming unmanageable. This is the recommended minimum key policy.
+  # PendingWindowInDays set to 7 (minimum) to minimize cost exposure when
+  # the stack is deleted.
+  # ----------------------------------------------------------------------------
+  KataKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Symmetric CMK for CloudKata kata-105. Encryption and decryption with automatic annual rotation."
+      Enabled: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: kata-105-key-policy
+        Statement:
+          - Sid: "Enable IAM User Permissions"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-105
+
+  # ----------------------------------------------------------------------------
+  # KMS Alias — alias/kata-105-key
+  # Alias names must start with alias/ but cannot start with alias/aws/
+  # ----------------------------------------------------------------------------
+  KataKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/kata-105-key
+      TargetKeyId: !Ref KataKey
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  KeyId:
+    Description: ID of the KMS key
+    Value: !Ref KataKey
+
+  KeyArn:
+    Description: ARN of the KMS key
+    Value: !GetAtt KataKey.Arn
+
+  AliasName:
+    Description: Alias name of the KMS key
+    Value: !Ref KataKeyAlias
