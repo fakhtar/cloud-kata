@@ -521,6 +521,8 @@ The following katas are planned for the CloudKata library. All are open for comm
 | [kata-103](./katas/kata-103-s3-basics/)  | S3 Basics — Buckets, Versioning & Security | 100 | Depth | S3 | Published |
 | [kata-104](./katas/kata-104-vpc-basics/)  | VPC Basics: Networking Constructs & Routing | 100 | Depth | VPC | Published |
 | [kata-105](./katas/kata-105-kms-basics/)  | KMS Basics — Keys, Aliases & Rotation | 100 | Depth | KMS | Published |
+| [kata-106](./katas/kata-106-cloudwatch-basics/)  | CloudWatch Basics — Billing Alarm & Alerting | 100 | Depth | CloudWatch | Published |
+
 
 
 ### 200 Level Kata

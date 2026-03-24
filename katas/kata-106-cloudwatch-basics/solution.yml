@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-106 - CloudWatch Basics: Billing Alarm and Alerting. Deploys kata-106-BillingAlertTopic SNS topic and kata-106-BillingAlarm CloudWatch billing alarm. Must be deployed in us-east-1."
+
+# ==============================================================================
+# IMPORTANT: This stack must be deployed in us-east-1.
+# AWS billing metrics (EstimatedCharges) are only published to CloudWatch
+# in us-east-1 regardless of where your workloads run.
+#
+# Deploy command:
+#   aws cloudformation deploy \
+#     --template-file solution.yml \
+#     --stack-name kata-106-solution \
+#     --region us-east-1
+# ==============================================================================
+
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # SNS Topic — kata-106-BillingAlertTopic
+  # Receives notifications when the billing alarm triggers.
+  # ----------------------------------------------------------------------------
+  BillingAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: kata-106-BillingAlertTopic
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-106
+
+  # ----------------------------------------------------------------------------
+  # CloudWatch Billing Alarm — kata-106-BillingAlarm
+  # Monitors EstimatedCharges in the AWS/Billing namespace.
+  # Dimension Currency=USD scopes the alarm to account-level total charges.
+  # Period 21600 (6 hours) matches the billing metric publish frequency.
+  # Statistic Maximum reflects the running total for the billing period.
+  # Threshold $10 — any positive value will pass the validator.
+  # TreatMissingData breaching — alerts if billing data stops publishing.
+  # ----------------------------------------------------------------------------
+  BillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: kata-106-BillingAlarm
+      AlarmDescription: "CloudKata kata-106 billing alarm. Triggers when estimated AWS charges exceed $10."
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      Statistic: Maximum
+      Period: 21600
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !Ref BillingAlertTopic
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  TopicArn:
+    Description: ARN of the SNS billing alert topic
+    Value: !Ref BillingAlertTopic
+
+  AlarmArn:
+    Description: ARN of the CloudWatch billing alarm
+    Value: !GetAtt BillingAlarm.Arn
