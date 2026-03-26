@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-201 - DynamoDB Core: Tables, Keys, Indexes and Capacity Modes. Deploys kata-201-Orders table with composite primary key, on-demand capacity, and a GSI for customer email access pattern."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # DynamoDB Table — kata-201-Orders
+  #
+  # Primary key (composite):
+  #   Partition key: OrderId (S) — uniquely identifies an order
+  #   Sort key:      CreatedAt (S) — supports range queries by creation date
+  #
+  # Capacity mode: PAY_PER_REQUEST (on-demand)
+  #   Chosen because the order management system has unpredictable traffic.
+  #   No capacity planning required. Cannot specify ProvisionedThroughput
+  #   alongside PAY_PER_REQUEST.
+  #
+  # GSI: kata-201-CustomerEmail-index
+  #   Partition key: CustomerEmail (S)
+  #   Enables querying all orders for a given customer.
+  #   ProjectionType ALL — all table attributes available in index results.
+  #   No ProvisionedThroughput on GSI when BillingMode is PAY_PER_REQUEST.
+  #
+  # AttributeDefinitions must include every attribute used in any key schema
+  # (table or index). Attributes not used as keys are NOT declared here.
+  # ----------------------------------------------------------------------------
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: kata-201-Orders
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: OrderId
+          AttributeType: S
+        - AttributeName: CreatedAt
+          AttributeType: S
+        - AttributeName: CustomerEmail
+          AttributeType: S
+      KeySchema:
+        - AttributeName: OrderId
+          KeyType: HASH
+        - AttributeName: CreatedAt
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: kata-201-CustomerEmail-index
+          KeySchema:
+            - AttributeName: CustomerEmail
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-201
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  TableName:
+    Description: Name of the DynamoDB table
+    Value: !Ref OrdersTable
+
+  TableArn:
+    Description: ARN of the DynamoDB table
+    Value: !GetAtt OrdersTable.Arn
