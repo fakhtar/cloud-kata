@@ -1,0 +1,297 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-202 - Amazon Lex V2 Advanced: Versioning, Aliases and Lambda Fulfillment."
+
+# ==============================================================================
+# Resource creation order:
+#   1. LambdaExecutionRole
+#   2. FulfillmentFunction (Lambda)
+#   3. LexServiceRole
+#   4. FoodOrderingBot (Lex) — DependsOn LexServiceRole
+#   5. FoodOrderingBotVersion — DependsOn FoodOrderingBot
+#   6. ProductionAlias — DependsOn FoodOrderingBotVersion
+#   7. LexInvokeLambdaPermission — DependsOn ProductionAlias
+# ==============================================================================
+
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # IAM Role — Lambda execution role
+  # AWSLambdaBasicExecutionRole grants CloudWatch Logs write access.
+  # This is intentional at the 200 level — Lambda IAM is kata-101's domain.
+  # ----------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-202-LambdaExecutionRole
+      Description: "Execution role for kata-202-FulfillmentFunction."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-202
+
+  # ----------------------------------------------------------------------------
+  # Lambda Function — kata-202-FulfillmentFunction
+  # Inline Python 3.12. Handles OrderFood intent fulfillment via Lex V2
+  # response format. Returns Fulfilled state so Check 9 passes.
+  # ----------------------------------------------------------------------------
+  FulfillmentFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaExecutionRole
+    Properties:
+      FunctionName: kata-202-FulfillmentFunction
+      Description: "Fulfillment function for kata-202-FoodOrderingBot."
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              intent_name = event['sessionState']['intent']['name']
+              slots = event['sessionState']['intent']['slots']
+
+              if intent_name == 'OrderFood':
+                  food_item = None
+                  if slots.get('FoodItem') and slots['FoodItem'].get('value'):
+                      food_item = slots['FoodItem']['value']['interpretedValue']
+
+                  message = f"Got it! Your order for {food_item} has been placed." \
+                      if food_item else "Your food order has been placed."
+
+                  return {
+                      'sessionState': {
+                          'dialogAction': {'type': 'Close'},
+                          'intent': {
+                              'name': intent_name,
+                              'state': 'Fulfilled'
+                          }
+                      },
+                      'messages': [
+                          {
+                              'contentType': 'PlainText',
+                              'content': message
+                          }
+                      ]
+                  }
+
+              return {
+                  'sessionState': {
+                      'dialogAction': {'type': 'Close'},
+                      'intent': {
+                          'name': intent_name,
+                          'state': 'Fulfilled'
+                      }
+                  },
+                  'messages': [
+                      {
+                          'contentType': 'PlainText',
+                          'content': 'Your request has been processed.'
+                      }
+                  ]
+              }
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-202
+
+  # ----------------------------------------------------------------------------
+  # IAM Role — Lex service role
+  # Allows lexv2.amazonaws.com to assume this role at runtime.
+  # ----------------------------------------------------------------------------
+  LexServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-202-LexServiceRole
+      Description: "Service role for kata-202-FoodOrderingBot."
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lexv2.amazonaws.com
+            Action: sts:AssumeRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-202
+
+  # ----------------------------------------------------------------------------
+  # Lex V2 Bot — kata-202-FoodOrderingBot
+  # Same food ordering scenario as kata-100 with one key difference:
+  # OrderFood intent has FulfillmentCodeHook.Enabled: true which tells Lex
+  # to invoke the alias Lambda function when the intent is ready to fulfill.
+  # The actual Lambda ARN is NOT set here — it is set on the alias.
+  # AutoBuildBotLocales: true builds en_US automatically on creation.
+  # ----------------------------------------------------------------------------
+  FoodOrderingBot:
+    Type: AWS::Lex::Bot
+    DependsOn: LexServiceRole
+    Properties:
+      Name: kata-202-FoodOrderingBot
+      RoleArn: !GetAtt LexServiceRole.Arn
+      DataPrivacy:
+        ChildDirected: false
+      IdleSessionTTLInSeconds: 300
+      AutoBuildBotLocales: true
+      BotLocales:
+        - LocaleId: en_US
+          NluConfidenceThreshold: 0.40
+          SlotTypes:
+            - Name: kata-202-FoodItemType
+              SlotTypeValues:
+                - SampleValue:
+                    Value: Pizza
+                - SampleValue:
+                    Value: Burger
+                - SampleValue:
+                    Value: Salad
+                - SampleValue:
+                    Value: Tacos
+              ValueSelectionSetting:
+                ResolutionStrategy: TOP_RESOLUTION
+          Intents:
+            - Name: OrderFood
+              SampleUtterances:
+                - Utterance: "I want to order a pizza"
+                - Utterance: "Can I get a burger"
+                - Utterance: "I would like to order some food"
+                - Utterance: "Place a food order for me"
+                - Utterance: "I want to order"
+                - Utterance: "Order food please"
+                - Utterance: "Get me some food"
+              Slots:
+                - Name: FoodItem
+                  SlotTypeName: kata-202-FoodItemType
+                  ValueElicitationSetting:
+                    SlotConstraint: Required
+                    PromptSpecification:
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "What would you like to order?"
+                      MaxRetries: 2
+                      AllowInterrupt: true
+              SlotPriorities:
+                - Priority: 1
+                  SlotName: FoodItem
+              # FulfillmentCodeHook.Enabled tells Lex to invoke the alias
+              # Lambda when this intent is fulfilled. The Lambda ARN itself
+              # is configured on the BotAlias, not here.
+              # IsActive must also be true — when false the code hook doesn't
+              # run even if Enabled is true.
+              FulfillmentCodeHook:
+                Enabled: true
+                IsActive: true
+            - Name: CancelOrder
+              SampleUtterances:
+                - Utterance: "Cancel my order"
+                - Utterance: "I want to cancel"
+                - Utterance: "Stop my order"
+                - Utterance: "Forget my order"
+                - Utterance: "I changed my mind"
+                - Utterance: "Cancel that"
+                - Utterance: "Never mind"
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Your order has been cancelled."
+                  AllowInterrupt: false
+            - Name: FallbackIntent
+              Description: "Default fallback intent"
+              ParentIntentSignature: AMAZON.FallbackIntent
+
+  # ----------------------------------------------------------------------------
+  # Bot Version — publishes DRAFT as a numbered version
+  # DependsOn FoodOrderingBot ensures the bot is built before versioning.
+  # BotVersion.BotVersion returns the numeric version string (e.g. "1").
+  # ----------------------------------------------------------------------------
+  FoodOrderingBotVersion:
+    Type: AWS::Lex::BotVersion
+    DependsOn: FoodOrderingBot
+    Properties:
+      BotId: !Ref FoodOrderingBot
+      BotVersionLocaleSpecification:
+        - LocaleId: en_US
+          BotVersionLocaleDetails:
+            SourceBotVersion: DRAFT
+      Description: "kata-202 initial version"
+
+  # ----------------------------------------------------------------------------
+  # Bot Alias — kata-202-ProductionAlias
+  # Points to the published numeric version (not DRAFT).
+  # BotAliasLocaleSettings wires the Lambda function to the en_US locale.
+  # CodeHookInterfaceVersion must be "1.0" (string).
+  # BotAliasTags used for tags — AWS::Lex::BotAlias does not support Tags.
+  # ----------------------------------------------------------------------------
+  ProductionAlias:
+    Type: AWS::Lex::BotAlias
+    DependsOn: FoodOrderingBotVersion
+    Properties:
+      BotId: !Ref FoodOrderingBot
+      BotAliasName: kata-202-ProductionAlias
+      BotVersion: !GetAtt FoodOrderingBotVersion.BotVersion
+      BotAliasLocaleSettings:
+        - LocaleId: en_US
+          BotAliasLocaleSetting:
+            Enabled: true
+            CodeHookSpecification:
+              LambdaCodeHook:
+                CodeHookInterfaceVersion: "1.0"
+                LambdaArn: !GetAtt FulfillmentFunction.Arn
+      BotAliasTags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-202
+
+  # ----------------------------------------------------------------------------
+  # Lambda Permission — grants the bot alias permission to invoke the function
+  # Without this Lex cannot call Lambda at runtime even if the ARN is set.
+  # SourceArn scoped to the specific alias ARN for least privilege.
+  # DependsOn ProductionAlias ensures the alias ARN exists before this is set.
+  # ----------------------------------------------------------------------------
+  LexInvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: ProductionAlias
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt FulfillmentFunction.Arn
+      Principal: lexv2.amazonaws.com
+      SourceArn: !GetAtt ProductionAlias.Arn
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  BotId:
+    Description: ID of the Lex V2 bot
+    Value: !Ref FoodOrderingBot
+
+  BotVersion:
+    Description: Published numeric bot version
+    Value: !GetAtt FoodOrderingBotVersion.BotVersion
+
+  AliasId:
+    Description: ID of the production alias
+    Value: !GetAtt ProductionAlias.BotAliasId
+
+  FunctionArn:
+    Description: ARN of the fulfillment Lambda function
+    Value: !GetAtt FulfillmentFunction.Arn

@@ -531,7 +531,7 @@ The following katas are planned for the CloudKata library. All are open for comm
 |---|---|---|---|---|---|
 | kata-200 | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect | Open |
 | [kata-201](./katas/kata-201-dynamo-db-core/) | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB | Published |
-| kata-202 | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Open |
+| [kata-202](./katas/kata-202-lex-v2-advanced/) | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Published |
 
 ### 300 Level Kata
 
