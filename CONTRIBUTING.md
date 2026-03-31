@@ -511,27 +511,36 @@ Copy this checklist into your pull request description and check every item befo
 
 The following katas are planned for the CloudKata library. All are open for community contribution. Open an issue to claim one before you start building. If you want to contribute a kata that is not on this road-map, open an issue and a maintainer will update the road-map.
 
+
 ### 100 Level Kata
 
 | ID | Title | Level | Type | Services | Status |
 |---|---|---|---|---|---|
 | [kata-100](./katas/kata-100-lexv2-basics/) | Amazon Lex V2 Basics — Bots, Intents & Slots | 100 | Depth | Lex V2 | Published |
 | [kata-101](./katas/kata-101-iam-fundamentals/) | IAM Fundamentals — Roles, Policies & Trust Relationships | 100 | Depth | IAM | Published |
-| [kata-102](./katas/kata-102-lambda-essentials/)  | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Published |
-| [kata-103](./katas/kata-103-s3-basics/)  | S3 Basics — Buckets, Versioning & Security | 100 | Depth | S3 | Published |
-| [kata-104](./katas/kata-104-vpc-basics/)  | VPC Basics: Networking Constructs & Routing | 100 | Depth | VPC | Published |
-| [kata-105](./katas/kata-105-kms-basics/)  | KMS Basics — Keys, Aliases & Rotation | 100 | Depth | KMS | Published |
-| [kata-106](./katas/kata-106-cloudwatch-basics/)  | CloudWatch Basics — Billing Alarm & Alerting | 100 | Depth | CloudWatch | Published |
-
-
+| [kata-102](./katas/kata-102-lambda-essentials/) | Lambda Essentials — Functions, Triggers & Environment Variables | 100 | Depth | Lambda | Published |
+| [kata-103](./katas/kata-103-s3-basics/) | S3 Basics — Buckets, Versioning & Security | 100 | Depth | S3 | Published |
+| [kata-104](./katas/kata-104-vpc-basics/) | VPC Basics — Networking Constructs & Routing | 100 | Depth | VPC | Published |
+| [kata-105](./katas/kata-105-kms-basics/) | KMS Basics — Keys, Aliases & Rotation | 100 | Depth | KMS | Published |
+| [kata-106](./katas/kata-106-cloudwatch-basics/) | CloudWatch Basics — Billing Alarm & Alerting | 100 | Depth | CloudWatch | Published |
+| kata-107 | SQS Basics — Queues, Visibility & Dead-Letter Queues | 100 | Depth | SQS | Open |
+| kata-108 | EC2 Basics — Instances, Security Groups & Key Pairs | 100 | Depth | EC2 | Open |
+| kata-109 | SSM Parameter Store — Parameters, Types & Versioning | 100 | Depth | SSM | Open |
+| kata-110 | EventBridge Basics — Rules, Targets & Scheduling | 100 | Depth | EventBridge | Open |
+| kata-111 | Secrets Manager Basics — Secrets & Access | 100 | Depth | Secrets Manager | Open |
 
 ### 200 Level Kata
 
 | ID | Title | Level | Type | Services | Status |
 |---|---|---|---|---|---|
 | kata-200 | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect | Open |
-| [kata-201](./katas/kata-201-dynamo-db-core/) | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB | Published |
-| [kata-202](./katas/kata-202-lex-v2-advanced/) | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Published |
+| [kata-201](./katas/kata-201-dynamodb-core/) | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB | Published |
+| [kata-202](./katas/kata-202-lexv2-advanced/) | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Published |
+| kata-203 | API Gateway + Lambda — REST API & Proxy Integration | 200 | Breadth | API Gateway, Lambda | Open |
+| kata-204 | S3 + Lambda — Event Notifications & Triggers | 200 | Breadth | S3, Lambda | Open |
+| kata-205 | Lambda + SQS — Event Source Mapping & Error Handling | 200 | Breadth | Lambda, SQS | Open |
+| kata-206 | RDS Basics — Instances, Subnet Groups & Parameter Groups | 200 | Depth | RDS | Open |
+| kata-207 | CloudTrail Basics — Trails, Events & Audit Logging | 200 | Depth | CloudTrail, S3 | Open |
 
 ### 300 Level Kata
 
