@@ -172,11 +172,16 @@ else
 
   # ----------------------------------------------------------------------------
   # Check 8 — Lambda is configured as code hook on the alias for en_US
+  # The CLI returns botAliasLocaleSettings as a map keyed by locale ID.
+  # Try both camelCase variations as the CLI output format has varied.
   # ----------------------------------------------------------------------------
   echo "Checking Lambda code hook on alias..."
   LAMBDA_ARN_ON_ALIAS=$(echo "$ALIAS_DETAIL" | \
-    jq -r '.botAliasLocaleSettings["en_US"].codeHookSpecification.lambdaCodeHook.lambdaArn
-    // empty' 2>/dev/null)
+    jq -r '
+      (.botAliasLocaleSettings["en_US"].codeHookSpecification.lambdaCodeHook.lambdaArn
+      // .botAliasLocaleSettings["en_US"].codeHookSpecification.lambdaCodeHook.lambdaARN
+      // empty)
+    ' 2>/dev/null)
 
   if [ -z "$LAMBDA_ARN_ON_ALIAS" ]; then
     fail "Lambda is not configured as code hook on alias for en_US"
@@ -196,12 +201,16 @@ if [ -z "$ALIAS_ID" ]; then
   fail "Runtime invocation skipped — alias not found"
 else
   SESSION_ID="kata-202-validator-$$"
+  # Use CancelOrder utterance — this intent has no slots so Lambda is
+  # invoked immediately without slot elicitation, avoiding InProgress state.
+  # CancelOrder fulfillment goes through the alias Lambda (if configured)
+  # and the function returns Fulfilled for any intent.
   RESPONSE=$(aws lexv2-runtime recognize-text \
     --bot-id "$BOT_ID" \
     --bot-alias-id "$ALIAS_ID" \
     --locale-id "en_US" \
     --session-id "$SESSION_ID" \
-    --text "I want to order a pizza" \
+    --text "Cancel my order" \
     --output json 2>/dev/null)
 
   RECOGNIZED_INTENT=$(echo "$RESPONSE" | \
@@ -209,13 +218,13 @@ else
   INTENT_STATE=$(echo "$RESPONSE" | \
     jq -r '.sessionState.intent.state // empty')
 
-  if [ "$RECOGNIZED_INTENT" = "OrderFood" ] && \
+  if [ "$RECOGNIZED_INTENT" = "CancelOrder" ] && \
      [ "$INTENT_STATE" = "Fulfilled" ]; then
-    pass "Bot responds correctly via production alias (OrderFood — Fulfilled)"
-  elif [ "$RECOGNIZED_INTENT" = "OrderFood" ]; then
-    fail "Bot recognized OrderFood but state is '$INTENT_STATE' — expected Fulfilled. Check Lambda fulfillment."
+    pass "Bot responds correctly via production alias (CancelOrder — Fulfilled)"
+  elif [ "$RECOGNIZED_INTENT" = "CancelOrder" ]; then
+    fail "Bot recognized CancelOrder but state is '$INTENT_STATE' — expected Fulfilled. Check Lambda fulfillment and permissions."
   else
-    fail "Bot did not route to OrderFood intent — found: '$RECOGNIZED_INTENT'"
+    fail "Bot did not route to CancelOrder intent — found: '$RECOGNIZED_INTENT'"
   fi
 fi
 
