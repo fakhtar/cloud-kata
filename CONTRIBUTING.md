@@ -523,7 +523,7 @@ The following katas are planned for the CloudKata library. All are open for comm
 | [kata-104](./katas/kata-104-vpc-basics/) | VPC Basics — Networking Constructs & Routing | 100 | Depth | VPC | Published |
 | [kata-105](./katas/kata-105-kms-basics/) | KMS Basics — Keys, Aliases & Rotation | 100 | Depth | KMS | Published |
 | [kata-106](./katas/kata-106-cloudwatch-basics/) | CloudWatch Basics — Billing Alarm & Alerting | 100 | Depth | CloudWatch | Published |
-| kata-107 | SQS Basics — Queues, Visibility & Dead-Letter Queues | 100 | Depth | SQS | Open |
+| [kata-107](./katas/kata-107-sqs-basics/) | SQS Basics — Queues, Visibility & Dead-Letter Queues | 100 | Depth | SQS | Published |
 | kata-108 | EC2 Basics — Instances, Security Groups & Key Pairs | 100 | Depth | EC2 | Open |
 | kata-109 | SSM Parameter Store — Parameters, Types & Versioning | 100 | Depth | SSM | Open |
 | kata-110 | EventBridge Basics — Rules, Targets & Scheduling | 100 | Depth | EventBridge | Open |
