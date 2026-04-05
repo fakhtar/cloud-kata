@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-107 - SQS Basics: Queues, Visibility and Dead-Letter Queues. Solution template. Deploys all infrastructure required to pass the kata-107 validator at 100%."
+
+Resources:
+
+  SecondaryQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: kata-107-SecondaryQueue
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-107
+
+  PrimaryQueue:
+    Type: AWS::SQS::Queue
+    DependsOn: SecondaryQueue
+    Properties:
+      QueueName: kata-107-PrimaryQueue
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SecondaryQueue.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-107
+
+Outputs:
+
+  PrimaryQueueUrl:
+    Description: URL of kata-107-PrimaryQueue
+    Value: !Ref PrimaryQueue
+
+  PrimaryQueueArn:
+    Description: ARN of kata-107-PrimaryQueue
+    Value: !GetAtt PrimaryQueue.Arn
+
+  SecondaryQueueUrl:
+    Description: URL of kata-107-SecondaryQueue
+    Value: !Ref SecondaryQueue
+
+  SecondaryQueueArn:
+    Description: ARN of kata-107-SecondaryQueue
+    Value: !GetAtt SecondaryQueue.Arn
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell to check all kata-107 requirements"
