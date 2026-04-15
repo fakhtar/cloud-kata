@@ -50,25 +50,24 @@ Resources:
 
   # ----------------------------------------------------------------------------
   # Security Group — kata-108-SecurityGroup
-  # Allows SSH inbound from 0.0.0.0/0 and all outbound traffic.
-  # No VpcId specified — CloudFormation places this in the default VPC.
-  # See the ⚠️ note above regarding the SSH source CIDR.
+  # Allows SSH inbound from 0.0.0.0/0.
+  # SecurityGroupEgress is intentionally omitted. When no egress rules are
+  # specified, AWS automatically adds a default allow-all egress rule for VPC
+  # security groups. This gives us the required allow-all outbound behaviour
+  # without needing to specify VpcId, which would require a lookup of the
+  # default VPC ID. See the ⚠️ note above regarding the SSH source CIDR.
   # ----------------------------------------------------------------------------
   KataSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: kata-108-SecurityGroup
-      GroupDescription: "CloudKata kata-108 — allows SSH inbound and all outbound"
+      GroupDescription: "CloudKata kata-108 - allows SSH inbound and all outbound"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
-          Description: "SSH inbound — restrict to your IP in production"
-      SecurityGroupEgress:
-        - IpProtocol: "-1"
-          CidrIp: 0.0.0.0/0
-          Description: "All outbound traffic"
+          Description: "SSH inbound - restrict to your IP in production"
       Tags:
         - Key: Name
           Value: kata-108-SecurityGroup
