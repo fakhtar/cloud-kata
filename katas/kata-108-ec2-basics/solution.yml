@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-108 - EC2 Basics: Instances, Security Groups & Key Pairs. Deploys kata-108-KeyPair, kata-108-SecurityGroup, and kata-108-Instance (t3.micro) into the default VPC."
+
+# ==============================================================================
+# Parameters
+# ==============================================================================
+Parameters:
+
+  # ----------------------------------------------------------------------------
+  # LatestAmiId — resolves to the latest Amazon Linux 2023 AMI in the current
+  # region at deploy time via SSM Parameter Store. No hardcoded AMI IDs.
+  # ----------------------------------------------------------------------------
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # Key Pair — kata-108-KeyPair
+  # RSA key pair. CloudFormation stores the private key material in
+  # AWS Systems Manager Parameter Store at:
+  #   /ec2/keypair/<key-pair-id>
+  # Retrieve it after deployment with:
+  #   aws ssm get-parameter \
+  #     --name /ec2/keypair/<KeyPairId from Outputs> \
+  #     --with-decryption \
+  #     --query Parameter.Value \
+  #     --output text > kata-108-KeyPair.pem
+  #   chmod 400 kata-108-KeyPair.pem
+  #
+  # ⚠️  Note: Opening SSH to 0.0.0.0/0 (as this solution does for portability)
+  # exposes port 22 to the entire internet. This is acceptable for a short-lived
+  # lab environment but is NOT recommended practice for production or long-lived
+  # resources. Always restrict SSH source CIDRs to known IP ranges.
+  # ----------------------------------------------------------------------------
+  KataKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: kata-108-KeyPair
+      KeyType: rsa
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-108
+
+  # ----------------------------------------------------------------------------
+  # Security Group — kata-108-SecurityGroup
+  # Allows SSH inbound from 0.0.0.0/0 and all outbound traffic.
+  # No VpcId specified — CloudFormation places this in the default VPC.
+  # See the ⚠️ note above regarding the SSH source CIDR.
+  # ----------------------------------------------------------------------------
+  KataSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: kata-108-SecurityGroup
+      GroupDescription: "CloudKata kata-108 — allows SSH inbound and all outbound"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: "SSH inbound — restrict to your IP in production"
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: "All outbound traffic"
+      Tags:
+        - Key: Name
+          Value: kata-108-SecurityGroup
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-108
+
+  # ----------------------------------------------------------------------------
+  # EC2 Instance — kata-108-Instance
+  # t3.micro running the latest Amazon Linux 2023 AMI (resolved via SSM).
+  # No SubnetId specified — CloudFormation places this in the default VPC.
+  # ----------------------------------------------------------------------------
+  KataInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref KataKeyPair
+      SecurityGroups:
+        - !Ref KataSecurityGroup
+      Tags:
+        - Key: Name
+          Value: kata-108-Instance
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-108
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+
+  InstanceId:
+    Description: ID of the EC2 instance
+    Value: !Ref KataInstance
+
+  InstancePublicIp:
+    Description: Public IP address of the instance
+    Value: !GetAtt KataInstance.PublicIp
+
+  SecurityGroupId:
+    Description: ID of the security group
+    Value: !GetAtt KataSecurityGroup.GroupId
+
+  KeyPairId:
+    Description: >
+      ID of the key pair. Retrieve the private key with:
+      aws ssm get-parameter --name /ec2/keypair/<KeyPairId>
+      --with-decryption --query Parameter.Value --output text > kata-108-KeyPair.pem
+    Value: !GetAtt KataKeyPair.KeyPairId
