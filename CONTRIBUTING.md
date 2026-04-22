@@ -525,9 +525,9 @@ The following katas are planned for the CloudKata library. All are open for comm
 | [kata-106](./katas/kata-106-cloudwatch-basics/) | CloudWatch Basics — Billing Alarm & Alerting | 100 | Depth | CloudWatch | Published |
 | [kata-107](./katas/kata-107-sqs-basics/) | SQS Basics — Queues, Visibility & Dead-Letter Queues | 100 | Depth | SQS | Published |
 | [kata-108](./katas/kata-108-ec2-basics/)  | EC2 Basics — Instances, Security Groups & Key Pairs | 100 | Depth | EC2 | Published |
-| kata-109 | SSM Parameter Store — Parameters, Types & Versioning | 100 | Depth | SSM | Open |
-| kata-110 | EventBridge Basics — Rules, Targets & Scheduling | 100 | Depth | EventBridge | Open |
-| kata-111 | Secrets Manager Basics — Secrets & Access | 100 | Depth | Secrets Manager | Open |
+| kata-109 | SSM Parameter Store — Parameters, Types & Versioning | 100 | Depth | SSM | Assigned |
+| [kata-110](./katas/kata-110-eventbridge-basics/) | EventBridge Basics — Rules, Targets & Scheduling | 100 | Depth | EventBridge | Published |
+| kata-111 | Secrets Manager Basics — Secrets & Access | 100 | Depth | Secrets Manager | In-Progress |
 
 ### 200 Level Kata
 
