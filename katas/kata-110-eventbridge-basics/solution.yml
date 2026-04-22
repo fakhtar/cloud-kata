@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-110 - EventBridge Basics: Rules, Targets & Scheduling. Deploys kata-110-AlertTopic (SNS), kata-110-ScheduledRule (EventBridge), and the SNS topic policy granting EventBridge publish access."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # SNS Topic -- kata-110-AlertTopic
+  # Standard SNS topic used as the EventBridge rule target.
+  # ----------------------------------------------------------------------------
+  KataAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: kata-110-AlertTopic
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-110
+
+  # ----------------------------------------------------------------------------
+  # SNS Topic Policy -- grants EventBridge permission to publish to the topic.
+  #
+  # For SNS targets, EventBridge uses resource-based policies, not IAM roles.
+  # Do NOT set RoleArn on the EventBridge target -- doing so can cause delivery
+  # failures for SNS targets. The policy here grants events.amazonaws.com the
+  # sns:Publish action, scoped to this rule ARN via aws:SourceArn.
+  # ----------------------------------------------------------------------------
+  KataAlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref KataAlertTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref KataAlertTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/kata-110-ScheduledRule"
+
+  # ----------------------------------------------------------------------------
+  # EventBridge Rule -- kata-110-ScheduledRule
+  # Fires every 5 minutes on the default event bus and delivers to the SNS topic.
+  # No RoleArn is specified on the target -- SNS uses resource-based policy above.
+  # ----------------------------------------------------------------------------
+  KataScheduledRule:
+    Type: AWS::Events::Rule
+    DependsOn: KataAlertTopicPolicy
+    Properties:
+      Name: kata-110-ScheduledRule
+      Description: "CloudKata kata-110 - fires every 5 minutes and publishes to kata-110-AlertTopic"
+      ScheduleExpression: "rate(5 minutes)"
+      State: ENABLED
+      Targets:
+        - Id: kata-110-AlertTopicTarget
+          Arn: !Ref KataAlertTopic
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+
+  TopicArn:
+    Description: ARN of the SNS topic
+    Value: !Ref KataAlertTopic
+
+  RuleArn:
+    Description: ARN of the EventBridge rule
+    Value: !GetAtt KataScheduledRule.Arn
