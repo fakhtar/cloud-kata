@@ -540,7 +540,7 @@ The following katas are planned for the CloudKata library. All are open for comm
 | kata-204 | S3 + Lambda — Event Notifications & Triggers | 200 | Breadth | S3, Lambda | Open |
 | kata-205 | Lambda + SQS — Event Source Mapping & Error Handling | 200 | Breadth | Lambda, SQS | Open |
 | kata-206 | RDS Basics — Instances, Subnet Groups & Parameter Groups | 200 | Depth | RDS | Open |
-| kata-207 | CloudTrail Basics — Trails, Events & Audit Logging | 200 | Depth | CloudTrail, S3 | Open |
+| [kata-207](./katas/kata-207-cloudtrail-basics/)  | CloudTrail Basics — Trails, Events & Audit Logging | 200 | Depth | CloudTrail, S3 | Published |
 
 ### 300 Level Kata
 
