@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudKata kata-203 - API Gateway + Lambda: REST API and Proxy Integration. Deploys kata-203-HandlerFunction with an execution role, kata-203-OrderAPI with a GET /orders resource using Lambda proxy integration, and deploys to a prod stage."
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # IAM Execution Role for Lambda
+  #
+  # AWSLambdaBasicExecutionRole grants permission to write logs to CloudWatch
+  # Logs. This is the minimum role required by any Lambda function.
+  # ----------------------------------------------------------------------------
+  HandlerFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-203-HandlerFunctionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # ----------------------------------------------------------------------------
+  # Lambda Function — kata-203-HandlerFunction
+  #
+  # Python 3.12 inline function. CloudFormation places ZipFile content in a
+  # file named index.py, so the handler must be index.handler.
+  #
+  # Returns a static JSON response with statusCode 200. This satisfies the
+  # validator's HTTP 200 check when the endpoint is invoked via curl.
+  # ----------------------------------------------------------------------------
+  HandlerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: kata-203-HandlerFunction
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HandlerFunctionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+
+          def handler(event, context):
+              return {
+                  "statusCode": 200,
+                  "headers": {"Content-Type": "application/json"},
+                  "body": json.dumps({"message": "orders ok"})
+              }
+      Description: "kata-203 handler - returns 200 JSON response for GET /orders"
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-203
+
+  # ----------------------------------------------------------------------------
+  # REST API — kata-203-OrderAPI
+  # ----------------------------------------------------------------------------
+  OrderApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: kata-203-OrderAPI
+      Description: "kata-203 order management REST API"
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-203
+
+  # ----------------------------------------------------------------------------
+  # Resource — /orders
+  #
+  # PathPart is the last segment only (orders, not /orders).
+  # ParentId points to the API root resource via RootResourceId.
+  # ----------------------------------------------------------------------------
+  OrdersResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref OrderApi
+      ParentId: !GetAtt OrderApi.RootResourceId
+      PathPart: orders
+
+  # ----------------------------------------------------------------------------
+  # Method — GET /orders with Lambda proxy integration
+  #
+  # AuthorizationType: NONE — open access, no IAM or Cognito required.
+  #
+  # Integration:
+  #   Type: AWS_PROXY — Lambda proxy integration. API Gateway passes the full
+  #   request to Lambda and returns the function's response verbatim.
+  #
+  #   IntegrationHttpMethod: POST — Lambda invocations always use POST at the
+  #   API Gateway-to-Lambda level, regardless of the client-facing HTTP method.
+  #
+  #   Uri: the Lambda invocation ARN in the form:
+  #   arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/{functionArn}/invocations
+  # ----------------------------------------------------------------------------
+  OrdersGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OrderApi
+      ResourceId: !Ref OrdersResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionArn}/invocations"
+          - FunctionArn: !GetAtt HandlerFunction.Arn
+
+  # ----------------------------------------------------------------------------
+  # Lambda Resource Policy — allow API Gateway to invoke the function
+  #
+  # Principal: apigateway.amazonaws.com
+  # SourceArn scoped to this API and all stages/methods using a wildcard.
+  # Using /* /* /* (any stage, any method, any resource) avoids tight coupling
+  # to the stage name and is the recommended pattern for REST APIs.
+  # ----------------------------------------------------------------------------
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt HandlerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OrderApi}/*/*/*"
+
+  # ----------------------------------------------------------------------------
+  # Deployment — deploys the API to the prod stage
+  #
+  # DependsOn: OrdersGetMethod is required. Without it, CloudFormation may
+  # attempt to create the deployment before the method exists, causing:
+  # "The REST API doesn't contain any methods."
+  # ----------------------------------------------------------------------------
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: OrdersGetMethod
+    Properties:
+      RestApiId: !Ref OrderApi
+      StageName: prod
+      Description: "kata-203 prod deployment"
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  FunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref HandlerFunction
+
+  FunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt HandlerFunction.Arn
+
+  ApiId:
+    Description: ID of the REST API
+    Value: !Ref OrderApi
+
+  ApiEndpoint:
+    Description: Invoke URL for the prod stage GET /orders endpoint
+    Value: !Sub "https://${OrderApi}.execute-api.${AWS::Region}.amazonaws.com/prod/orders"
