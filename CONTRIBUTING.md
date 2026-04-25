@@ -536,11 +536,11 @@ The following katas are planned for the CloudKata library. All are open for comm
 | kata-200 | Amazon Connect Basics — Instance, Hours of Operation & Queues | 200 | Depth | Connect | Open |
 | [kata-201](./katas/kata-201-dynamodb-core/) | DynamoDB Core — Tables, Keys, Indexes & Capacity Modes | 200 | Depth | DynamoDB | Published |
 | [kata-202](./katas/kata-202-lexv2-advanced/) | Amazon Lex V2 Advanced — Versioning, Aliases & Lambda Fulfillment | 200 | Depth | Lex V2, Lambda | Published |
-| kata-203 | API Gateway + Lambda — REST API & Proxy Integration | 200 | Breadth | API Gateway, Lambda | Open |
+| [kata-203](./katas/kata-207-cloudtrail-basics/)   | API Gateway + Lambda — REST API & Proxy Integration | 200 | Breadth | API Gateway, Lambda | Open |
 | kata-204 | S3 + Lambda — Event Notifications & Triggers | 200 | Breadth | S3, Lambda | Open |
 | kata-205 | Lambda + SQS — Event Source Mapping & Error Handling | 200 | Breadth | Lambda, SQS | Open |
 | kata-206 | RDS Basics — Instances, Subnet Groups & Parameter Groups | 200 | Depth | RDS | Open |
-| [kata-207](./katas/kata-207-cloudtrail-basics/)  | CloudTrail Basics — Trails, Events & Audit Logging | 200 | Depth | CloudTrail, S3 | Published |
+| [kata-207](./katas/kata-203-api-gateway-lambda-rest/)  | CloudTrail Basics — Trails, Events & Audit Logging | 200 | Depth | CloudTrail, S3 | Published |
 
 ### 300 Level Kata
 
