@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-300 - Serverless API: Lambda, API Gateway & DynamoDB.
+  Deploys kata-300-ItemsTable (DynamoDB), kata-300-HandlerFunction (Lambda)
+  with an IAM role granting DynamoDB access, kata-300-ItemsAPI (REST API)
+  with POST and GET methods on /items using Lambda proxy integration, and
+  deploys to a prod stage.
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # DynamoDB Table — kata-300-ItemsTable
+  #
+  # PAY_PER_REQUEST billing mode (on-demand) — no capacity planning required.
+  # Partition key: id (String). No sort key.
+  # ----------------------------------------------------------------------------
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: kata-300-ItemsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-300
+
+  # ----------------------------------------------------------------------------
+  # IAM Execution Role for Lambda — kata-300-HandlerFunctionRole
+  #
+  # Grants:
+  #   - AWSLambdaBasicExecutionRole (CloudWatch Logs)
+  #   - Inline policy: PutItem and Scan on kata-300-ItemsTable
+  #
+  # The DynamoDB policy is scoped to the specific table ARN rather than "*"
+  # to follow least-privilege best practice.
+  # ----------------------------------------------------------------------------
+  HandlerFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-300-HandlerFunctionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: kata-300-DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                Resource: !GetAtt ItemsTable.Arn
+
+  # ----------------------------------------------------------------------------
+  # Lambda Function — kata-300-HandlerFunction
+  #
+  # Python 3.12 inline function. CloudFormation names the ZipFile content
+  # index.py, so the handler must be index.handler.
+  #
+  # Environment variable TABLE_NAME is set to the DynamoDB table name via
+  # !Ref ItemsTable, which resolves to the TableName string.
+  #
+  # POST /items: creates a new item with a UUID id and returns 201.
+  # GET  /items: scans the table and returns all items with 200.
+  # ----------------------------------------------------------------------------
+  HandlerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: kata-300-HandlerFunction
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HandlerFunctionRole.Arn
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ItemsTable
+      Code:
+        ZipFile: |
+          import json
+          import os
+          import uuid
+          import boto3
+
+          TABLE_NAME = os.environ["TABLE_NAME"]
+          dynamodb = boto3.resource("dynamodb")
+          table = dynamodb.Table(TABLE_NAME)
+
+          def handler(event, context):
+              method = event.get("httpMethod", "")
+              path = event.get("path", "")
+
+              if method == "POST" and path == "/items":
+                  body = json.loads(event.get("body") or "{}")
+                  name = body.get("name", "unnamed")
+                  item_id = str(uuid.uuid4())
+                  table.put_item(Item={"id": item_id, "name": name})
+                  return {
+                      "statusCode": 201,
+                      "headers": {"Content-Type": "application/json"},
+                      "body": json.dumps({"id": item_id, "name": name})
+                  }
+
+              if method == "GET" and path == "/items":
+                  result = table.scan()
+                  return {
+                      "statusCode": 200,
+                      "headers": {"Content-Type": "application/json"},
+                      "body": json.dumps({"items": result.get("Items", [])})
+                  }
+
+              return {
+                  "statusCode": 404,
+                  "headers": {"Content-Type": "application/json"},
+                  "body": json.dumps({"message": "not found"})
+              }
+      Description: "kata-300 handler - POST and GET /items backed by DynamoDB"
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-300
+
+  # ----------------------------------------------------------------------------
+  # REST API — kata-300-ItemsAPI
+  # ----------------------------------------------------------------------------
+  ItemsApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: kata-300-ItemsAPI
+      Description: "kata-300 item registry REST API"
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-300
+
+  # ----------------------------------------------------------------------------
+  # Resource — /items
+  #
+  # PathPart is the segment name only (items, not /items).
+  # ParentId points to the API root resource via RootResourceId.
+  # ----------------------------------------------------------------------------
+  ItemsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ItemsApi
+      ParentId: !GetAtt ItemsApi.RootResourceId
+      PathPart: items
+
+  # ----------------------------------------------------------------------------
+  # Method — POST /items with Lambda proxy integration
+  #
+  # IntegrationHttpMethod must be POST for all Lambda integrations regardless
+  # of the client-facing HTTP method.
+  # ----------------------------------------------------------------------------
+  ItemsPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ItemsApi
+      ResourceId: !Ref ItemsResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionArn}/invocations"
+          - FunctionArn: !GetAtt HandlerFunction.Arn
+
+  # ----------------------------------------------------------------------------
+  # Method — GET /items with Lambda proxy integration
+  # ----------------------------------------------------------------------------
+  ItemsGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ItemsApi
+      ResourceId: !Ref ItemsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionArn}/invocations"
+          - FunctionArn: !GetAtt HandlerFunction.Arn
+
+  # ----------------------------------------------------------------------------
+  # Lambda Resource Policy — allow API Gateway to invoke the function
+  #
+  # SourceArn uses /*/* /* to cover all stages, methods, and resources.
+  # A single permission covers both POST and GET methods.
+  # ----------------------------------------------------------------------------
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt HandlerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ItemsApi}/*/*/*"
+
+  # ----------------------------------------------------------------------------
+  # Deployment — deploys the API to the prod stage
+  #
+  # DependsOn both methods to ensure neither is missing when the deployment
+  # snapshot is taken. Without this, CloudFormation may create the deployment
+  # before either method exists and fail with:
+  # "The REST API doesn't contain any methods."
+  # ----------------------------------------------------------------------------
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ItemsPostMethod
+      - ItemsGetMethod
+    Properties:
+      RestApiId: !Ref ItemsApi
+      StageName: prod
+      Description: "kata-300 prod deployment"
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  TableName:
+    Description: Name of the DynamoDB table
+    Value: !Ref ItemsTable
+
+  TableArn:
+    Description: ARN of the DynamoDB table
+    Value: !GetAtt ItemsTable.Arn
+
+  FunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref HandlerFunction
+
+  FunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt HandlerFunction.Arn
+
+  ApiId:
+    Description: ID of the REST API
+    Value: !Ref ItemsApi
+
+  ApiEndpoint:
+    Description: Invoke URL for the prod stage /items endpoint
+    Value: !Sub "https://${ItemsApi}.execute-api.${AWS::Region}.amazonaws.com/prod/items"
