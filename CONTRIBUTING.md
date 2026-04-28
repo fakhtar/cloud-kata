@@ -546,7 +546,7 @@ The following katas are planned for the CloudKata library. All are open for comm
 
 | ID | Title | Level | Type | Services | Status |
 |---|---|---|---|---|---|
-| [kata-300](./katas/kata-300-serverless-api/) kata-300 | Serverless API — Lambda, API Gateway & DynamoDB | 300 | Breadth | Lambda, API Gateway, DynamoDB | Open |
+| [kata-300](./katas/kata-300-serverless-api/) | Serverless API — Lambda, API Gateway & DynamoDB | 300 | Breadth | Lambda, API Gateway, DynamoDB | Open |
 | kata-301 | Amazon Connect Contact Flows — IVR Design & Lex Integration | 300 | Depth | Connect, Lex V2 | Open |
 | kata-302 | AI-Powered IVR — Connect, Lex V2 & Lambda Fulfillment | 300 | Breadth | Connect, Lex V2, Lambda | Open |
 
