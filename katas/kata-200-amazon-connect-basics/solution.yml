@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-200 - Amazon Connect Basics: Instance, Hours of Operation & Queue.
+  Deploys a Connect instance with alias kata-200-instance, hours of operation
+  kata-200-BasicHours covering Monday-Friday 09:00-17:00 UTC, and queue
+  kata-200-BasicQueue associated with those hours.
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # Connect Instance — kata-200-instance
+  #
+  # IdentityManagementType: CONNECT_MANAGED uses Connect's built-in user
+  # directory. This is the simplest option and requires no external directory.
+  #
+  # Attributes.InboundCalls and OutboundCalls are required properties even
+  # when not strictly needed for this kata. Both are enabled here.
+  #
+  # Note: AWS::Connect::Instance does not support the standard CloudFormation
+  # Tags property. Instance tags must be applied separately via the CLI or
+  # console after creation. The validator does not check instance tags.
+  # ----------------------------------------------------------------------------
+  ConnectInstance:
+    Type: AWS::Connect::Instance
+    Properties:
+      IdentityManagementType: CONNECT_MANAGED
+      InstanceAlias: kata-200-instance
+      Attributes:
+        InboundCalls: true
+        OutboundCalls: true
+
+  # ----------------------------------------------------------------------------
+  # Hours of Operation — kata-200-BasicHours
+  #
+  # Standard business hours: Monday through Friday, 09:00-17:00.
+  # TimeZone: America/New_York (EST/EDT) — a common, unambiguous named timezone.
+  #
+  # Config requires one entry per day. Five entries cover the full weekday
+  # schedule. StartTime and EndTime use Hours (0-23) and Minutes (0-59).
+  #
+  # InstanceArn: !GetAtt ConnectInstance.Arn — the instance ARN is available
+  # as a GetAtt return value on AWS::Connect::Instance.
+  # ----------------------------------------------------------------------------
+  BasicHours:
+    Type: AWS::Connect::HoursOfOperation
+    Properties:
+      Name: kata-200-BasicHours
+      Description: "Standard business hours - Monday to Friday 09:00-17:00"
+      InstanceArn: !GetAtt ConnectInstance.Arn
+      TimeZone: America/New_York
+      Config:
+        - Day: MONDAY
+          StartTime:
+            Hours: 9
+            Minutes: 0
+          EndTime:
+            Hours: 17
+            Minutes: 0
+        - Day: TUESDAY
+          StartTime:
+            Hours: 9
+            Minutes: 0
+          EndTime:
+            Hours: 17
+            Minutes: 0
+        - Day: WEDNESDAY
+          StartTime:
+            Hours: 9
+            Minutes: 0
+          EndTime:
+            Hours: 17
+            Minutes: 0
+        - Day: THURSDAY
+          StartTime:
+            Hours: 9
+            Minutes: 0
+          EndTime:
+            Hours: 17
+            Minutes: 0
+        - Day: FRIDAY
+          StartTime:
+            Hours: 9
+            Minutes: 0
+          EndTime:
+            Hours: 17
+            Minutes: 0
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-200
+
+  # ----------------------------------------------------------------------------
+  # Queue — kata-200-BasicQueue
+  #
+  # HoursOfOperationArn: the queue resource requires the full ARN of the hours
+  # of operation, not its ID. GetAtt on HoursOfOperationArn returns the ARN.
+  #
+  # No MaxContacts or OutboundCallerConfig are set — both are optional and
+  # not required by this kata.
+  # ----------------------------------------------------------------------------
+  BasicQueue:
+    Type: AWS::Connect::Queue
+    Properties:
+      Name: kata-200-BasicQueue
+      Description: "kata-200 basic queue associated with business hours"
+      InstanceArn: !GetAtt ConnectInstance.Arn
+      HoursOfOperationArn: !GetAtt BasicHours.HoursOfOperationArn
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-200
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  InstanceArn:
+    Description: ARN of the Connect instance
+    Value: !GetAtt ConnectInstance.Arn
+
+  InstanceId:
+    Description: ID of the Connect instance
+    Value: !Ref ConnectInstance
+
+  HoursOfOperationArn:
+    Description: ARN of the hours of operation
+    Value: !GetAtt BasicHours.HoursOfOperationArn
+
+  QueueArn:
+    Description: ARN of the queue
+    Value: !GetAtt BasicQueue.QueueArn
