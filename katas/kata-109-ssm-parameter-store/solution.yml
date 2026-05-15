@@ -1,0 +1,211 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-109 - SSM Parameter Store: Parameters, Types & Versioning.
+  Creates /kata-109/config/environment (String, value: staging, version >= 2)
+  and /kata-109/config/api-key (SecureString, value: supersecret) with
+  standard CloudKata tags on both parameters.
+
+# ==============================================================================
+# Resources
+# ==============================================================================
+Resources:
+
+  # ----------------------------------------------------------------------------
+  # String Parameter — /kata-109/config/environment
+  #
+  # AWS::SSM::Parameter supports String and StringList types natively.
+  # Value is set to "staging" directly. The version counter is driven to 2
+  # by the ParameterVersionBump custom resource below.
+  #
+  # Tags in CloudFormation use a flat map {Key: Value}, not a list.
+  # CloudFormation also automatically adds three aws:cloudformation:* tags.
+  # ----------------------------------------------------------------------------
+  EnvironmentParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /kata-109/config/environment
+      Type: String
+      Value: staging
+      Description: "kata-109 environment label"
+      Tags:
+        Project: CloudKata
+        Kata: kata-109
+
+  # ----------------------------------------------------------------------------
+  # IAM Role for custom resource Lambda functions
+  #
+  # Grants:
+  #   - AWSLambdaBasicExecutionRole (CloudWatch Logs)
+  #   - ssm:PutParameter on both parameter ARNs
+  #   - ssm:DeleteParameter on the SecureString parameter ARN
+  #
+  # The environment parameter does not need ssm:DeleteParameter because
+  # AWS::SSM::Parameter handles its own deletion on stack teardown.
+  # The SecureString parameter is managed entirely by the custom resource
+  # and must be explicitly cleaned up on Delete.
+  # ----------------------------------------------------------------------------
+  CustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-109-CustomResourceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: kata-109-SSMAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/kata-109/config/environment"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/kata-109/config/api-key"
+
+  # ----------------------------------------------------------------------------
+  # Lambda — VersionBumpFunction
+  #
+  # Writes the environment parameter a second time (Overwrite=True) to advance
+  # the version counter from 1 to 2. Called by ParameterVersionBump below.
+  #
+  # Handles Create and Update by calling PutParameter with the same value.
+  # Handles Delete as a no-op — the parameter itself is managed by
+  # AWS::SSM::Parameter and deleted automatically on stack teardown.
+  # ----------------------------------------------------------------------------
+  VersionBumpFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: EnvironmentParameter
+    Properties:
+      FunctionName: kata-109-VersionBumpFunction
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt CustomResourceRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          ssm = boto3.client("ssm")
+
+          def handler(event, context):
+              try:
+                  if event["RequestType"] in ("Create", "Update"):
+                      ssm.put_parameter(
+                          Name="/kata-109/config/environment",
+                          Value="staging",
+                          Type="String",
+                          Overwrite=True
+                      )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+
+  # ----------------------------------------------------------------------------
+  # Custom Resource — ParameterVersionBump
+  #
+  # Triggers VersionBumpFunction on stack creation to write the environment
+  # parameter a second time, advancing its version to 2. DependsOn ensures
+  # the parameter exists before the bump runs.
+  # ----------------------------------------------------------------------------
+  ParameterVersionBump:
+    Type: Custom::ParameterVersionBump
+    DependsOn: EnvironmentParameter
+    Properties:
+      ServiceToken: !GetAtt VersionBumpFunction.Arn
+
+  # ----------------------------------------------------------------------------
+  # Lambda — SecureStringFunction
+  #
+  # Creates and manages /kata-109/config/api-key as a SecureString.
+  # AWS::SSM::Parameter does not support SecureString, so a custom resource
+  # is required.
+  #
+  # On Create/Update: calls PutParameter with Type=SecureString and
+  # The parameter is created without tags — SecureString tagging is not
+  # supported in this kata due to API constraints.
+  # On Delete: calls DeleteParameter to clean up the parameter on stack
+  # teardown (it would otherwise be orphaned).
+  #
+  # Uses the default AWS-managed KMS key (aws/ssm) — no customer-managed
+  # key is required for this kata.
+  # ----------------------------------------------------------------------------
+  SecureStringFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: kata-109-SecureStringFunction
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt CustomResourceRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          ssm = boto3.client("ssm")
+          PARAM_NAME = "/kata-109/config/api-key"
+
+          def handler(event, context):
+              try:
+                  request_type = event["RequestType"]
+
+                  if request_type in ("Create", "Update"):
+                      ssm.put_parameter(
+                          Name=PARAM_NAME,
+                          Value="supersecret",
+                          Type="SecureString",
+                          Overwrite=True
+                      )
+
+                  elif request_type == "Delete":
+                      try:
+                          ssm.delete_parameter(Name=PARAM_NAME)
+                      except ssm.exceptions.ParameterNotFound:
+                          pass
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, PARAM_NAME)
+              except Exception as e:
+                  print(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)}, PARAM_NAME)
+
+  # ----------------------------------------------------------------------------
+  # Custom Resource — SecureStringParameter
+  #
+  # Invokes SecureStringFunction to create /kata-109/config/api-key.
+  # ----------------------------------------------------------------------------
+  SecureStringParameter:
+    Type: Custom::SecureStringParameter
+    Properties:
+      ServiceToken: !GetAtt SecureStringFunction.Arn
+
+# ==============================================================================
+# Outputs
+# ==============================================================================
+Outputs:
+  EnvironmentParameterName:
+    Description: Name of the String parameter
+    Value: !Ref EnvironmentParameter
+
+  EnvironmentParameterVersion:
+    Description: Current version of the environment parameter (should be 2+)
+    Value: !GetAtt EnvironmentParameter.Value
+
+  SecureStringParameterName:
+    Description: Name of the SecureString parameter
+    Value: /kata-109/config/api-key
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell after deploying this stack"
