@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-204 — S3 + Lambda: Event Notifications & Triggers.
+  Deploys an S3 bucket wired to invoke a Lambda function on every
+  ObjectCreated event, with the bucket-to-function permission scoped to
+  this specific bucket. Avoids the classic S3<->Lambda circular dependency
+  by giving the bucket an explicit, predictable name instead of letting
+  CloudFormation auto-generate one.
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Logs — explicit log group for the Lambda function
+  #
+  # Lambda creates this log group implicitly on first invocation if it does
+  # not already exist, but an implicitly-created log group lives outside the
+  # stack and is orphaned on stack deletion. Creating it explicitly here
+  # means it is torn down automatically when the stack is deleted, and its
+  # retention period is under our control rather than defaulting to "never
+  # expire".
+  # ---------------------------------------------------------------------------
+  ProcessorFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/kata-204-ProcessorFunction
+      RetentionInDays: 7
+
+  # ---------------------------------------------------------------------------
+  # IAM Role — Lambda execution role
+  #
+  # Grants only what Requirement 2 asks for: the ability to write its own
+  # invocation logs to CloudWatch Logs. The function reads S3 event data
+  # passed to it by the S3 service itself — it never calls an S3 API — so
+  # no S3 permissions belong on this role.
+  # ---------------------------------------------------------------------------
+  ProcessorFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-204-ProcessorFunctionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-204
+
+  # ---------------------------------------------------------------------------
+  # Lambda Function — kata-204-ProcessorFunction
+  #
+  # Code matches the handler provided in the README exactly. The function
+  # logs a "PROCESSED bucket=... key=... event=..." line for every S3 record
+  # it receives — this is the exact marker validate.sh searches for in
+  # CloudWatch Logs after uploading its test object.
+  # ---------------------------------------------------------------------------
+  ProcessorFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ProcessorFunctionLogGroup
+    Properties:
+      FunctionName: kata-204-ProcessorFunction
+      Description: "CloudKata kata-204 — logs details of every S3 object that triggers it"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt ProcessorFunctionRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          import json
+
+          def handler(event, context):
+              print("kata-204 ProcessorFunction invoked")
+              print(json.dumps(event))
+
+              for record in event.get("Records", []):
+                  bucket = record.get("s3", {}).get("bucket", {}).get("name", "unknown-bucket")
+                  key = record.get("s3", {}).get("object", {}).get("key", "unknown-key")
+                  event_name = record.get("eventName", "unknown-event")
+                  print(f"PROCESSED bucket={bucket} key={key} event={event_name}")
+
+              return {"statusCode": 200}
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-204
+
+  # ---------------------------------------------------------------------------
+  # Lambda Permission — allows S3 to invoke ProcessorFunction
+  #
+  # SourceArn is built with !Sub against the bucket's own name string below
+  # rather than !GetAtt/!Ref on the Bucket resource. This is the key move
+  # that avoids the classic S3<->Lambda circular dependency: if SourceArn
+  # referenced the Bucket resource directly, CloudFormation would need the
+  # bucket to exist before creating this permission, while the bucket's own
+  # NotificationConfiguration (below) needs this permission to exist first
+  # — a cycle CloudFormation cannot resolve. Because the bucket has an
+  # explicit, predictable name, we can construct its ARN as a plain string
+  # and never create that reference cycle in the first place.
+  # ---------------------------------------------------------------------------
+  S3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub "arn:aws:s3:::kata-204-bucket-${AWS::AccountId}"
+
+  # ---------------------------------------------------------------------------
+  # S3 Bucket — kata-204-bucket-<account-id>
+  #
+  # Uses an explicit BucketName (account ID suffix guarantees uniqueness)
+  # instead of letting CloudFormation auto-generate one. This is required
+  # for the SourceArn construction above to work without a circular
+  # dependency — see the comment on S3InvokePermission for the full
+  # explanation.
+  #
+  # DependsOn S3InvokePermission ensures the permission exists before S3
+  # validates the NotificationConfiguration; S3 checks that the target
+  # Lambda function's resource policy already grants it invoke permission
+  # at the time the notification configuration is applied, and will reject
+  # the configuration otherwise.
+  # ---------------------------------------------------------------------------
+  ProcessorBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: S3InvokePermission
+    Properties:
+      BucketName: !Sub "kata-204-bucket-${AWS::AccountId}"
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            Function: !GetAtt ProcessorFunction.Arn
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-204
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+Outputs:
+
+  BucketName:
+    Description: Name of the S3 bucket wired to trigger the Lambda function
+    Value: !Ref ProcessorBucket
+
+  FunctionName:
+    Description: Name of the Lambda function triggered by S3 uploads
+    Value: !Ref ProcessorFunction
+
+  FunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt ProcessorFunction.Arn
+
+  LogGroupName:
+    Description: CloudWatch Logs group to inspect for invocation evidence
+    Value: !Ref ProcessorFunctionLogGroup
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell after deploying this stack"
