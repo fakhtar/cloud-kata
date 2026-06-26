@@ -1,0 +1,489 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-500 — Contact Center Platform
+  Solution template. Deploys all infrastructure required to pass the
+  kata-500 validator at 100%.
+  NOTE: Amazon Connect instances cannot be deleted by CloudFormation.
+  After deleting this stack, you must manually delete the Connect instance
+  kata-500-instance via the console or CLI.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+
+Parameters:
+  LexBotLocaleId:
+    Type: String
+    Default: en_US
+    Description: Locale ID for the Lex V2 bot
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # IAM Role — Lambda Execution Role
+  # Grants the fulfilment function permission to write to DynamoDB and emit logs
+  # ---------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-500-LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: kata-500-DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource: !GetAtt CallerDataTable.Arn
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # IAM Role — Lex V2 Service Role
+  # Allows Amazon Lex to call AWS services on behalf of the bot
+  # ---------------------------------------------------------------------------
+  LexServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-500-LexServiceRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lexv2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonLexFullAccess
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # DynamoDB Table — CallerDataTable
+  # Stores caller interaction records written by the Lambda function
+  # ---------------------------------------------------------------------------
+  CallerDataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: kata-500-CallerDataTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: callerId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: callerId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # Lambda Function — FulfillmentFunction
+  # Invoked by Lex V2 to fulfil intents; writes interaction records to DynamoDB
+  # ---------------------------------------------------------------------------
+  FulfillmentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: kata-500-FulfillmentFunction
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          TABLE_NAME: kata-500-CallerDataTable
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import datetime
+
+          dynamodb = boto3.resource('dynamodb')
+
+          def handler(event, context):
+              table_name = os.environ.get('TABLE_NAME', 'kata-500-CallerDataTable')
+              table = dynamodb.Table(table_name)
+
+              session_id = event.get('sessionId', 'unknown')
+              intent_name = event.get('sessionState', {}).get('intent', {}).get('name', 'unknown')
+              timestamp = datetime.datetime.utcnow().isoformat()
+
+              table.put_item(Item={
+                  'callerId': session_id,
+                  'timestamp': timestamp,
+                  'intentName': intent_name,
+                  'status': 'FULFILLED'
+              })
+
+              return {
+                  'sessionState': {
+                      'dialogAction': {
+                          'type': 'Close'
+                      },
+                      'intent': {
+                          'name': intent_name,
+                          'state': 'Fulfilled'
+                      }
+                  },
+                  'messages': [
+                      {
+                          'contentType': 'PlainText',
+                          'content': 'Thank you. Your request has been processed.'
+                      }
+                  ]
+              }
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # Lambda Permission — Allow Lex V2 to invoke the function
+  # ---------------------------------------------------------------------------
+  LexInvokePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: IVRBotAlias
+    Properties:
+      FunctionName: !GetAtt FulfillmentFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: lexv2.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt IVRBotAlias.Arn
+
+  # ---------------------------------------------------------------------------
+  # Lex V2 Bot — IVRBot
+  # Handles CheckOrderStatus and CancelOrder intents
+  # ---------------------------------------------------------------------------
+  IVRBot:
+    Type: AWS::Lex::Bot
+    Properties:
+      Name: kata-500-IVRBot
+      Description: "CloudKata kata-500 IVR bot for food order management"
+      RoleArn: !GetAtt LexServiceRole.Arn
+      DataPrivacy:
+        ChildDirected: false
+      IdleSessionTTLInSeconds: 300
+      AutoBuildBotLocales: true
+      BotLocales:
+        - LocaleId: en_US
+          Description: "English (US) locale for kata-500-IVRBot"
+          NluConfidenceThreshold: 0.40
+          Intents:
+            # -----------------------------------------------------------------
+            # Intent 1 — CheckOrderStatus
+            # -----------------------------------------------------------------
+            - Name: CheckOrderStatus
+              Description: "Intent to check the status of an existing order"
+              SampleUtterances:
+                - Utterance: "What is the status of my order"
+                - Utterance: "Check my order status"
+                - Utterance: "Where is my order"
+                - Utterance: "Can you check on my order"
+                - Utterance: "I want to know the status of my order"
+                - Utterance: "Track my order"
+                - Utterance: "Check order {OrderId}"
+              Slots:
+                - Name: OrderId
+                  Description: "The alphanumeric order identifier"
+                  SlotTypeName: AMAZON.AlphaNumeric
+                  ValueElicitationSetting:
+                    SlotConstraint: Required
+                    PromptSpecification:
+                      MaxRetries: 3
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "Please provide your order ID."
+              SlotPriorities:
+                - Priority: 1
+                  SlotName: OrderId
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "I have received your request to check order {OrderId}."
+                IsActive: true
+
+            # -----------------------------------------------------------------
+            # Intent 2 — CancelOrder
+            # -----------------------------------------------------------------
+            - Name: CancelOrder
+              Description: "Intent to cancel an existing order"
+              SampleUtterances:
+                - Utterance: "Cancel my order"
+                - Utterance: "I want to cancel my order"
+                - Utterance: "Please cancel my order"
+                - Utterance: "I would like to cancel"
+                - Utterance: "Stop my order"
+                - Utterance: "I changed my mind about my order"
+                - Utterance: "Cancel that order"
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Your order has been cancelled."
+                IsActive: true
+
+            # -----------------------------------------------------------------
+            # FallbackIntent — Required by Lex V2
+            # -----------------------------------------------------------------
+            - Name: FallbackIntent
+              Description: "Default fallback when no intent matches"
+              ParentIntentSignature: AMAZON.FallbackIntent
+              IntentClosingSetting:
+                ClosingResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Sorry, I did not understand. You can check your order status or cancel an order."
+                IsActive: true
+
+  # ---------------------------------------------------------------------------
+  # Bot Version — publishes DRAFT as a numbered version for the alias
+  # ---------------------------------------------------------------------------
+  IVRBotVersion:
+    DependsOn: IVRBot
+    Type: AWS::Lex::BotVersion
+    Properties:
+      BotId: !Ref IVRBot
+      BotVersionLocaleSpecification:
+        - LocaleId: en_US
+          BotVersionLocaleDetails:
+            SourceBotVersion: DRAFT
+      Description: "kata-500 Version 1 - published from DRAFT"
+
+  # ---------------------------------------------------------------------------
+  # Bot Alias — kata-500-ProdAlias
+  # en_US locale enabled; Lambda code hook points to FulfillmentFunction
+  # ---------------------------------------------------------------------------
+  IVRBotAlias:
+    DependsOn: IVRBotVersion
+    Type: AWS::Lex::BotAlias
+    Properties:
+      BotId: !Ref IVRBot
+      BotAliasName: kata-500-ProdAlias
+      BotVersion: !GetAtt IVRBotVersion.BotVersion
+      Description: "CloudKata kata-500 production alias with Lambda code hook"
+      BotAliasLocaleSettings:
+        - LocaleId: en_US
+          BotAliasLocaleSetting:
+            Enabled: true
+            CodeHookSpecification:
+              LambdaCodeHook:
+                LambdaArn: !GetAtt FulfillmentFunction.Arn
+                CodeHookInterfaceVersion: "1.0"
+
+  # ---------------------------------------------------------------------------
+  # Amazon Connect Instance — kata-500-instance
+  # CONNECT_MANAGED identity; inbound and outbound calls; contact flow logs
+  # NOTE: CloudFormation cannot delete Connect instances. After stack deletion,
+  # manually delete kata-500-instance via the console or CLI.
+  # ---------------------------------------------------------------------------
+  ConnectInstance:
+    Type: AWS::Connect::Instance
+    Properties:
+      IdentityManagementType: CONNECT_MANAGED
+      InstanceAlias: kata-500-instance
+      Attributes:
+        InboundCalls: true
+        OutboundCalls: true
+        ContactflowLogs: true
+
+  # ---------------------------------------------------------------------------
+  # Integration Association — Associates IVRBot alias with Connect instance
+  # This is what aws connect list-bots returns under LexBots[].LexV2Bot.AliasArn
+  # ---------------------------------------------------------------------------
+  BotIntegration:
+    DependsOn:
+      - ConnectInstance
+      - IVRBotAlias
+    Type: AWS::Connect::IntegrationAssociation
+    Properties:
+      InstanceId: !GetAtt ConnectInstance.Arn
+      IntegrationType: LEX_BOT
+      IntegrationArn: !GetAtt IVRBotAlias.Arn
+
+  # ---------------------------------------------------------------------------
+  # Contact Flow — kata-500-ContactFlow
+  # Minimal CONTACT_FLOW type: greets the caller, invokes the Lex V2 bot,
+  # then disconnects. The Lex bot ARN is injected via Fn::Sub.
+  # ---------------------------------------------------------------------------
+  ContactFlow:
+    DependsOn: BotIntegration
+    Type: AWS::Connect::ContactFlow
+    Properties:
+      Name: kata-500-ContactFlow
+      Description: "CloudKata kata-500 contact flow - invokes IVRBot and disconnects"
+      InstanceArn: !GetAtt ConnectInstance.Arn
+      Type: CONTACT_FLOW
+      Content: !Sub
+        - |
+          {
+            "Version": "2019-10-30",
+            "StartAction": "11111111-1111-1111-1111-111111111111",
+            "Actions": [
+              {
+                "Identifier": "11111111-1111-1111-1111-111111111111",
+                "Type": "MessageParticipant",
+                "Parameters": {
+                  "Text": "Welcome to the kata-500 contact center."
+                },
+                "Transitions": {
+                  "NextAction": "22222222-2222-2222-2222-222222222222",
+                  "Errors": [
+                    { "NextAction": "33333333-3333-3333-3333-333333333333", "ErrorType": "NoMatchingError" }
+                  ],
+                  "Conditions": []
+                }
+              },
+              {
+                "Identifier": "22222222-2222-2222-2222-222222222222",
+                "Type": "ConnectParticipantWithLexBot",
+                "Parameters": {
+                  "Text": "How can I help you today?",
+                  "LexV2Bot": {
+                    "AliasArn": "${BotAliasArn}"
+                  }
+                },
+                "Transitions": {
+                  "NextAction": "33333333-3333-3333-3333-333333333333",
+                  "Errors": [
+                    { "NextAction": "33333333-3333-3333-3333-333333333333", "ErrorType": "NoMatchingError" },
+                    { "NextAction": "33333333-3333-3333-3333-333333333333", "ErrorType": "NoMatchingCondition" },
+                    { "NextAction": "33333333-3333-3333-3333-333333333333", "ErrorType": "InputTimeLimitExceeded" }
+                  ],
+                  "Conditions": []
+                }
+              },
+              {
+                "Identifier": "33333333-3333-3333-3333-333333333333",
+                "Type": "DisconnectParticipant",
+                "Parameters": {},
+                "Transitions": {}
+              }
+            ]
+          }
+        - BotAliasArn: !GetAtt IVRBotAlias.Arn
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Group — kata-500-ContactFlowLogs
+  # Receives contact flow logs; 30-day retention
+  # ---------------------------------------------------------------------------
+  ContactFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: kata-500-ContactFlowLogs
+      RetentionInDays: 30
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-500
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Alarm — kata-500-LambdaErrorAlarm
+  # Triggers on the first invocation error from FulfillmentFunction
+  # ---------------------------------------------------------------------------
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: kata-500-LambdaErrorAlarm
+      AlarmDescription: "Triggers when kata-500-FulfillmentFunction records an invocation error"
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: kata-500-FulfillmentFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+Outputs:
+
+  ConnectInstanceId:
+    Description: The ID of the kata-500-instance Connect instance
+    Value: !GetAtt ConnectInstance.Id
+
+  ConnectInstanceArn:
+    Description: The ARN of the kata-500-instance Connect instance
+    Value: !GetAtt ConnectInstance.Arn
+
+  IVRBotId:
+    Description: The ID of the kata-500-IVRBot Lex V2 bot
+    Value: !Ref IVRBot
+
+  IVRBotAliasId:
+    Description: The ID of the kata-500-ProdAlias bot alias
+    Value: !Ref IVRBotAlias
+
+  IVRBotAliasArn:
+    Description: The ARN of the kata-500-ProdAlias bot alias
+    Value: !GetAtt IVRBotAlias.Arn
+
+  FulfillmentFunctionArn:
+    Description: The ARN of the kata-500-FulfillmentFunction Lambda function
+    Value: !GetAtt FulfillmentFunction.Arn
+
+  CallerDataTableArn:
+    Description: The ARN of the kata-500-CallerDataTable DynamoDB table
+    Value: !GetAtt CallerDataTable.Arn
+
+  ContactFlowArn:
+    Description: The ARN of the kata-500-ContactFlow contact flow
+    Value: !Ref ContactFlow
+
+  ContactFlowLogGroupArn:
+    Description: The ARN of the kata-500-ContactFlowLogs log group
+    Value: !GetAtt ContactFlowLogGroup.Arn
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell to check all kata-500 requirements"
+
+  CleanupWarning:
+    Description: Important cleanup note
+    Value: "IMPORTANT - Amazon Connect instances cannot be deleted by CloudFormation. After deleting this stack, manually delete kata-500-instance via the Connect console or CLI."
