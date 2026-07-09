@@ -118,15 +118,15 @@ private tier, each spanning multiple AZs.
 ### Requirement 2 — Security Groups
 
 Create security groups that enforce tier-to-tier access only — no tier may
-be reachable by anything other than the tier directly in front of it:
+be reachable by anything other than the tier directly in front of it.
+Resource names: `kata-400-ALB-SG`, `kata-400-EC2-SG`, `kata-400-DB-SG`
 
-- The ALB's security group must accept inbound web traffic from the public
+- `kata-400-ALB-SG` must accept inbound web traffic from the public
   internet
-- The EC2 tier's security group must accept inbound application traffic
-  **only** from the ALB's security group — not from the internet directly
-- The database's security group must accept inbound traffic **only** from
-  the EC2 tier's security group — not from the internet, and not directly
-  from the ALB
+- `kata-400-EC2-SG` must accept inbound application traffic **only** from
+  `kata-400-ALB-SG` — not from the internet directly
+- `kata-400-DB-SG` must accept inbound traffic **only** from
+  `kata-400-EC2-SG` — not from the internet, and not directly from the ALB
 
 ---
 
@@ -199,8 +199,8 @@ architecture:
   behind `kata-400-ALB`
 - The CloudFront distribution's origin domain must match the DNS name of
   `kata-400-ALB`
-- `kata-400-DB` must be reachable only from resources using the EC2 tier's
-  security group — no broader ingress path may exist
+- `kata-400-DB` must be reachable only from resources using `kata-400-EC2-SG`
+  — no broader ingress path may exist
 - No security group in the stack may permit unrestricted inbound access to
   the EC2 or database tiers from `0.0.0.0/0`
 
@@ -226,22 +226,23 @@ A fully passing result looks like this:
  Three-Tier Web App: CloudFront, ALB, EC2 & RDS in Multi-AZ
 ==================================================
 
-✅ PASS — VPC 'kata-400-VPC' exists with public/private subnets across 2+ AZs
-✅ PASS — Public subnets route to an Internet Gateway
-✅ PASS — Private subnets have no direct internet route
-✅ PASS — Security groups enforce tier-to-tier access only
-✅ PASS — ALB 'kata-400-ALB' is internet-facing and spans 2+ public AZs
-✅ PASS — Target group has at least one healthy target
-✅ PASS — Auto Scaling group 'kata-400-ASG' spans 2+ private AZs with 2+ instances
-✅ PASS — ASG instances are healthy targets behind the ALB
+✅ PASS — VPC 'kata-400-VPC' exists (ID: vpc-xxxxxxxx)
+✅ PASS — Public subnets span 2 Availability Zones and route to an Internet Gateway (minimum: 2)
+✅ PASS — Private subnets span 2 Availability Zones with no direct route to an Internet Gateway (minimum: 2)
+✅ PASS — All 2 private subnet(s) route 0.0.0.0/0 outbound through a NAT Gateway
+✅ PASS — Security group 'kata-400-ALB-SG' allows inbound web traffic (80/443) from 0.0.0.0/0
+✅ PASS — Security group 'kata-400-EC2-SG' allows inbound only from 'kata-400-ALB-SG' (no 0.0.0.0/0 ingress)
+✅ PASS — Security group 'kata-400-DB-SG' allows inbound only from 'kata-400-EC2-SG' (no 0.0.0.0/0 ingress)
+✅ PASS — ALB 'kata-400-ALB' is internet-facing and spans 2 Availability Zones
+✅ PASS — Target group has 2 healthy target(s)
+✅ PASS — ASG 'kata-400-ASG' spans 2 AZs, MinSize=2, deployed in private subnets
+✅ PASS — All 2 ASG instance(s) are healthy targets behind 'kata-400-ALB'
 ✅ PASS — RDS instance 'kata-400-DB' is Multi-AZ and available
-✅ PASS — RDS subnet group is private and spans 2+ AZs
-✅ PASS — RDS instance is not publicly accessible
-✅ PASS — CloudFront distribution is Deployed with 'kata-400-ALB' as origin
-✅ PASS — CloudFront enforces HTTPS on viewer traffic
+✅ PASS — RDS subnet group is private-only, spans 2 AZs, and 'kata-400-DB' is not publicly accessible
+✅ PASS — CloudFront distribution is Deployed with 'kata-400-ALB' as origin and enforces HTTPS on viewer traffic
 
 ==================================================
- Results: 13/13 checks passed (100%)
+ Results: 14/14 checks passed (100%)
 ==================================================
 
  🎉 Perfect score! All kata-400 requirements met.
