@@ -1,0 +1,510 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-400 — Three-Tier Web App: CloudFront, ALB, EC2 & RDS in
+  Multi-AZ. Solution template. Deploys all infrastructure required to pass
+  the kata-400 validator at 100%.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+
+Parameters:
+  LatestAmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+    Description: "Latest Amazon Linux 2023 AMI, resolved automatically via SSM Parameter Store"
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # VPC & Internet Gateway
+  # ---------------------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: kata-400-VPC
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: kata-400-IGW
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # ---------------------------------------------------------------------------
+  # Subnets — 2 public, 2 private, across 2 Availability Zones
+  # ---------------------------------------------------------------------------
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: kata-400-PublicSubnet1
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: kata-400-PublicSubnet2
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: 10.0.10.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: kata-400-PrivateSubnet1
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: 10.0.11.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: kata-400-PrivateSubnet2
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  # ---------------------------------------------------------------------------
+  # Public routing — Internet Gateway
+  # ---------------------------------------------------------------------------
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: kata-400-PublicRouteTable
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ---------------------------------------------------------------------------
+  # Private routing — NAT Gateway (outbound-only internet access for patching)
+  # ---------------------------------------------------------------------------
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: kata-400-NatGatewayEIP
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: kata-400-NatGateway
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: kata-400-PrivateRouteTable
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  # ---------------------------------------------------------------------------
+  # Security Groups — tier-to-tier isolation
+  # Cross-referencing ingress rules are defined as separate
+  # AWS::EC2::SecurityGroupIngress resources rather than embedded, per AWS
+  # guidance, to avoid any circular-dependency resolution issues.
+  # ---------------------------------------------------------------------------
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: kata-400-ALB-SG
+      GroupDescription: "Allows inbound web traffic from the internet to the ALB"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: kata-400-ALB-SG
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: kata-400-EC2-SG
+      GroupDescription: "Allows inbound application traffic only from the ALB security group"
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: kata-400-EC2-SG
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: kata-400-DB-SG
+      GroupDescription: "Allows inbound database traffic only from the EC2 security group"
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: kata-400-DB-SG
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  EC2SecurityGroupIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt EC2SecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+      Description: "Allow app traffic from the ALB only"
+
+  DBSecurityGroupIngressFromEC2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt DBSecurityGroup.GroupId
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !GetAtt EC2SecurityGroup.GroupId
+      Description: "Allow MySQL traffic from the EC2 tier only"
+
+  # ---------------------------------------------------------------------------
+  # Application Load Balancer
+  # ---------------------------------------------------------------------------
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: kata-400-ALB
+      Type: application
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: kata-400-TG
+      VpcId: !Ref VPC
+      Port: 8080
+      Protocol: HTTP
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 15
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # ---------------------------------------------------------------------------
+  # Launch Template & Auto Scaling Group
+  # UserData installs a minimal HTTP server on port 8080 so the ALB health
+  # check and validator's healthy-target checks have something to pass.
+  # ---------------------------------------------------------------------------
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: kata-400-LaunchTemplate
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: t3.micro
+        SecurityGroupIds:
+          - !Ref EC2SecurityGroup
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            mkdir -p /opt/kata-400-app
+            echo "kata-400 OK" > /opt/kata-400-app/index.html
+            cd /opt/kata-400-app
+            nohup python3 -m http.server 8080 > /var/log/kata-400-app.log 2>&1 &
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: kata-400-AppInstance
+              - Key: Project
+                Value: CloudKata
+              - Key: Kata
+                Value: kata-400
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: kata-400-ASG
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: "2"
+      MaxSize: "4"
+      DesiredCapacity: "2"
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 120
+      Tags:
+        - Key: Name
+          Value: kata-400-AppInstance
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: CloudKata
+          PropagateAtLaunch: true
+        - Key: Kata
+          Value: kata-400
+          PropagateAtLaunch: true
+
+  # ---------------------------------------------------------------------------
+  # RDS — Multi-AZ database in the private data tier
+  # ManageMasterUserPassword delegates credential storage to Secrets Manager
+  # rather than embedding a plaintext password in the template.
+  # DeletionPolicy: Delete allows clean stack teardown for a kata workload;
+  # production workloads would typically use Snapshot instead.
+  # ---------------------------------------------------------------------------
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: kata-400-dbsubnetgroup
+      DBSubnetGroupDescription: "Private subnet group for kata-400-DB, spanning 2 AZs"
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      DBInstanceIdentifier: kata-400-DB
+      Engine: mysql
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: "20"
+      MasterUsername: admin
+      ManageMasterUserPassword: true
+      MultiAZ: true
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 1
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+  # ---------------------------------------------------------------------------
+  # CloudFront — edge caching layer in front of the ALB
+  # CachingDisabled managed policy (4135ea2d-6df8-44a3-9df3-4b5a84be39ad) is
+  # used since the origin serves dynamic content behind an Auto Scaling group,
+  # not static assets.
+  # ---------------------------------------------------------------------------
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: "CloudKata kata-400 — CloudFront distribution in front of kata-400-ALB"
+        Origins:
+          - Id: kata-400-ALB-Origin
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+        DefaultCacheBehavior:
+          TargetOriginId: kata-400-ALB-Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          AllowedMethods:
+            - GET
+            - HEAD
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-400
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+Outputs:
+  VpcId:
+    Description: The ID of kata-400-VPC
+    Value: !Ref VPC
+
+  ALBDNSName:
+    Description: The DNS name of kata-400-ALB
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  ALBArn:
+    Description: The ARN of kata-400-ALB
+    Value: !Ref ApplicationLoadBalancer
+
+  AutoScalingGroupName:
+    Description: The name of kata-400-ASG
+    Value: !Ref AutoScalingGroup
+
+  DatabaseEndpoint:
+    Description: The connection endpoint of kata-400-DB
+    Value: !GetAtt Database.Endpoint.Address
+
+  DatabaseSecretArn:
+    Description: The Secrets Manager ARN holding the managed master user password
+    Value: !GetAtt Database.MasterUserSecret.SecretArn
+
+  CloudFrontDomainName:
+    Description: The public domain name of the CloudFront distribution
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell to check all kata-400 requirements"
