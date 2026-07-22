@@ -1,0 +1,187 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudKata kata-205 — Lambda + SQS: Event Source Mapping & Error Handling.
+  Solution template. Deploys all infrastructure required to pass the
+  kata-205 validator at 100%.
+
+# =============================================================================
+# Resources
+# =============================================================================
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Dead-letter queue
+  # Holds messages that fail processing after maxReceiveCount attempts.
+  # ---------------------------------------------------------------------------
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: kata-205-DeadLetterQueue
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+  # ---------------------------------------------------------------------------
+  # Processing queue
+  # The source the function drains. Its redrive policy routes messages that
+  # fail processing three times to the dead-letter queue.
+  #
+  # VisibilityTimeout (180s) is deliberately >= the function timeout (30s).
+  # For SQS event source mappings AWS requires the queue visibility timeout to
+  # be at least the function timeout, and recommends at least 6x it, so that a
+  # message is not redelivered while it is still being processed.
+  # ---------------------------------------------------------------------------
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: kata-205-ProcessingQueue
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+  # ---------------------------------------------------------------------------
+  # Lambda execution role
+  # AWSLambdaSQSQueueExecutionRole grants sqs:ReceiveMessage, sqs:DeleteMessage,
+  # sqs:GetQueueAttributes, and CloudWatch Logs write permissions in one policy.
+  # ---------------------------------------------------------------------------
+  ProcessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kata-205-ProcessorRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch log group
+  # Declared explicitly so it is deleted with the stack instead of being left
+  # behind as an orphan when Lambda auto-creates it on first invocation.
+  # ---------------------------------------------------------------------------
+  ProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/kata-205-ProcessorFunction
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+  # ---------------------------------------------------------------------------
+  # Processor function
+  # Consumes batches of SQS messages and logs each one. Inline code is placed
+  # by CloudFormation in a file named 'index', so the handler is
+  # index.lambda_handler.
+  # ---------------------------------------------------------------------------
+  ProcessorFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ProcessorLogGroup
+    Properties:
+      FunctionName: kata-205-ProcessorFunction
+      Description: "CloudKata kata-205 — consumes messages from the processing queue"
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt ProcessorRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              records = event.get("Records", [])
+              for record in records:
+                  message_id = record.get("messageId")
+                  body = record.get("body")
+                  print(f"kata-205 processed message {message_id}: {body}")
+              return {"processed": len(records)}
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+  # ---------------------------------------------------------------------------
+  # Event source mapping
+  # Connects the processing queue to the function, pulling messages in batches.
+  #
+  # DependsOn ProcessorRole: the mapping cannot be created until the execution
+  # role's SQS permissions exist. The Ref to the function already orders the
+  # mapping after the function; the explicit role dependency guards against the
+  # IAM permission not being in place when Lambda validates the mapping.
+  # ---------------------------------------------------------------------------
+  QueueToFunctionMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    DependsOn: ProcessorRole
+    Properties:
+      EventSourceArn: !GetAtt ProcessingQueue.Arn
+      FunctionName: !Ref ProcessorFunction
+      BatchSize: 10
+      Enabled: true
+      Tags:
+        - Key: Project
+          Value: CloudKata
+        - Key: Kata
+          Value: kata-205
+
+# =============================================================================
+# Outputs
+# =============================================================================
+
+Outputs:
+
+  ProcessingQueueUrl:
+    Description: URL of the kata-205 processing queue
+    Value: !Ref ProcessingQueue
+
+  ProcessingQueueArn:
+    Description: ARN of the kata-205 processing queue
+    Value: !GetAtt ProcessingQueue.Arn
+
+  DeadLetterQueueUrl:
+    Description: URL of the kata-205 dead-letter queue
+    Value: !Ref DeadLetterQueue
+
+  DeadLetterQueueArn:
+    Description: ARN of the kata-205 dead-letter queue
+    Value: !GetAtt DeadLetterQueue.Arn
+
+  ProcessorFunctionName:
+    Description: Name of the kata-205 processor function
+    Value: !Ref ProcessorFunction
+
+  ProcessorFunctionArn:
+    Description: ARN of the kata-205 processor function
+    Value: !GetAtt ProcessorFunction.Arn
+
+  EventSourceMappingId:
+    Description: UUID of the event source mapping linking the queue to the function
+    Value: !Ref QueueToFunctionMapping
+
+  ExecutionRoleArn:
+    Description: ARN of the Lambda execution role
+    Value: !GetAtt ProcessorRole.Arn
+
+  ValidatorInstructions:
+    Description: How to validate this kata
+    Value: "Run validate.sh in AWS CloudShell to check all kata-205 requirements"
